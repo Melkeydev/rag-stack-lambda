@@ -1,16 +1,23 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as cdk from "aws-cdk-lib";
+import { Stack, StackProps } from "aws-cdk-lib";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as apigw from "aws-cdk-lib/aws-apigateway";
+import { Construct } from "constructs";
 
-export class RagStackCdkStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+export class RagStackCdkStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    // Define the Lambda function
+    const myFunction = new lambda.Function(this, "MyFunction", {
+      code: lambda.Code.fromAsset("lambda"),
+      handler: "main",
+      runtime: lambda.Runtime.GO_1_X,
+    });
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'RagStackCdkQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    // Define the API Gateway
+    const api = new apigw.RestApi(this, "Endpoint");
+    const integration = new apigw.LambdaIntegration(myFunction);
+    api.root.addMethod("POST", integration);
   }
 }
