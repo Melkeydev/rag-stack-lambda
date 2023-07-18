@@ -1,0 +1,7 @@
+- research CLI
+- Configure aws
+- Add readme
+- register account
+- login
+- jwt tokens
+- add make file
