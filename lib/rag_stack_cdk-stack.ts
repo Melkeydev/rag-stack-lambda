@@ -10,7 +10,6 @@ export class RagStackCdkStack extends Stack {
     super(scope, id, props);
 
     // Define the DynamoDB table
-    // TODO: rename to user table
     const table = new dynamodb.Table(this, "MyTable", {
       partitionKey: { name: "username", type: dynamodb.AttributeType.STRING },
       tableName: "user-table-name",
