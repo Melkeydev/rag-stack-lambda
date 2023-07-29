@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/golang-jwt/jwt"
 )
 
 type MyEvent struct {
@@ -65,16 +66,54 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error"}, err
 	}
 
-	return events.APIGatewayProxyResponse{}, nil
+	token, err := generateToken(registerReq.Username)
+	if err != nil {
+		log.Print("Could not issue jwt token")
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error"}, err
+	}
+
+	responseBody := map[string]string{
+		"token": token,
+	}
+
+	responsejson, err := json.Marshal(responseBody)
+	if err != nil {
+		log.Printf("Failed to marshal response %v", err)
+	}
+
+	return events.APIGatewayProxyResponse{Body: string(responsejson)}, nil
 
 }
 
-// I need a jwt library for this
-// func generateToken(username string) (string, error) {
-// 	expirationTime := time.Now().Add(1 * time.Hour)
+// Returns the actual token string and a error
+func generateToken(username string) (string, error) {
+	// expirationTime := time.Now().Add(1 * time.Hour)
+	// TODO: this should come from env
+	mySigningKey := []byte("randomString")
 
-// 	claims :=
-// }
+	type MyCustomClaims struct {
+		Username string `json:"username"`
+		jwt.StandardClaims
+	}
+
+	claims := MyCustomClaims{
+		username,
+		jwt.StandardClaims{
+			ExpiresAt: 15000,
+			Issuer:    "test",
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	ss, err := token.SignedString(mySigningKey)
+	if err != nil {
+		log.Printf("Failed to sign the token due to: %v", err)
+		return "", err
+	}
+
+	return ss, nil
+
+}
 
 func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var event MyEvent
