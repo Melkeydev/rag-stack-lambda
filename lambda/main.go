@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -41,6 +42,8 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 		return events.APIGatewayProxyResponse{Body: "Invalid Request"}, err
 	}
 
+	fmt.Println(registerReq.Username)
+
 	// We need to obviously validate the password and username
 	// Create an AWS session and Insert these into my DynamoDB
 
@@ -63,20 +66,24 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 	_, err = DDB.PutItem(item)
 	if err != nil {
 		log.Printf("Failed to input item into user DDB: %v", err)
-		return events.APIGatewayProxyResponse{Body: "Internal Server Error"}, err
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error - DDB"}, err
 	}
 
 	token, err := generateToken(registerReq.Username)
 	if err != nil {
 		log.Print("Could not issue jwt token")
-		return events.APIGatewayProxyResponse{Body: "Internal Server Error"}, err
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token"}, err
 	}
 
 	responseBody := map[string]string{
 		"token": token,
 	}
 
+	fmt.Println("this is response body", responseBody)
+
 	responsejson, err := json.Marshal(responseBody)
+	fmt.Println("this is response json", responsejson)
+
 	if err != nil {
 		log.Printf("Failed to marshal response %v", err)
 	}
@@ -128,7 +135,13 @@ func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 // I want login handler
 // I want a register handler
 // I also want a jwt function
-// THis is just for demo right now
 func main() {
-	lambda.Start(HandleRequest)
+	lambda.Start(func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+		switch request.Path {
+		case "/register":
+			return RegisterHandler(request)
+		default:
+			return events.APIGatewayProxyResponse{Body: "Not Found", StatusCode: http.StatusNotFound}, nil
+		}
+	})
 }
