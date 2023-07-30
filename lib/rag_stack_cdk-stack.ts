@@ -32,17 +32,13 @@ export class RagStackCdkStack extends Stack {
 
     // Define the API Gateway
     const api = new apigw.RestApi(this, "Endpoint");
+
     const integration = new apigw.LambdaIntegration(myFunction);
     api.root.addMethod("POST", integration);
 
     // Define the '/register' resource and method
-    const registerResource = api.root.addResource("register");
     const registerIntegration = new apigw.LambdaIntegration(myFunction);
+    const registerResource = api.root.addResource("register");
     registerResource.addMethod("POST", registerIntegration);
-
-    const defaultIntegration = new apigw.LambdaIntegration(myFunction);
-    api.root.addMethod("ANY", defaultIntegration, {
-      methodResponses: [{ statusCode: "200" }, { statusCode: "404" }],
-    });
   }
 }

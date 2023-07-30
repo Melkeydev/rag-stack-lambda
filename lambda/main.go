@@ -66,13 +66,13 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 	_, err = DDB.PutItem(item)
 	if err != nil {
 		log.Printf("Failed to input item into user DDB: %v", err)
-		return events.APIGatewayProxyResponse{Body: "Internal Server Error - DDB"}, err
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error - DDB", StatusCode: 500}, err
 	}
 
 	token, err := generateToken(registerReq.Username)
 	if err != nil {
 		log.Print("Could not issue jwt token")
-		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token"}, err
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token", StatusCode: 500}, err
 	}
 
 	responseBody := map[string]string{
@@ -88,13 +88,12 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 		log.Printf("Failed to marshal response %v", err)
 	}
 
-	return events.APIGatewayProxyResponse{Body: string(responsejson)}, nil
+	return events.APIGatewayProxyResponse{Body: string(responsejson), StatusCode: 200}, nil
 
 }
 
 // Returns the actual token string and a error
 func generateToken(username string) (string, error) {
-	// expirationTime := time.Now().Add(1 * time.Hour)
 	// TODO: this should come from env
 	mySigningKey := []byte("randomString")
 
@@ -120,16 +119,6 @@ func generateToken(username string) (string, error) {
 
 	return ss, nil
 
-}
-
-func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	var event MyEvent
-	err := json.Unmarshal([]byte(request.Body), &event)
-	if err != nil {
-		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: 400}, nil
-	}
-	message := fmt.Sprintf("Hello %s!", event.Name)
-	return events.APIGatewayProxyResponse{Body: message, StatusCode: 200}, nil
 }
 
 // I want login handler
