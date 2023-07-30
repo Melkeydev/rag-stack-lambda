@@ -23,6 +23,11 @@ type RegisterRequest struct {
 	Password string `json:"password"`
 }
 
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 const (
 	userTableName = "user-table-name"
 )
@@ -79,15 +84,40 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 		"token": token,
 	}
 
-	fmt.Println("this is response body", responseBody)
-
 	responsejson, err := json.Marshal(responseBody)
-	fmt.Println("this is response json", responsejson)
 
 	if err != nil {
 		log.Printf("Failed to marshal response %v", err)
 	}
+	return events.APIGatewayProxyResponse{Body: string(responsejson), StatusCode: 200}, nil
+}
 
+func LoginHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var loginReq LoginRequest
+
+	err := json.Unmarshal([]byte(request.Body), &loginReq)
+	if err != nil {
+		log.Printf("Unable to unmarshal login request:%v", err)
+		return events.APIGatewayProxyResponse{Body: "Invalid Request"}, err
+	}
+
+	// We need to validate the password from DDB to the one in the request
+	// A call to the K:V store and then do some matching
+
+	token, err := generateToken(loginReq.Password)
+	if err != nil {
+		log.Print("Could not issue jwt token")
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token", StatusCode: 500}, err
+	}
+
+	responseBody := map[string]string{
+		"token": token,
+	}
+
+	responsejson, err := json.Marshal(responseBody)
+	if err != nil {
+		log.Printf("Failed to marshal response %v", err)
+	}
 	return events.APIGatewayProxyResponse{Body: string(responsejson), StatusCode: 200}, nil
 
 }
@@ -113,20 +143,21 @@ func generateToken(username string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	ss, err := token.SignedString(mySigningKey)
 	if err != nil {
+
 		log.Printf("Failed to sign the token due to: %v", err)
 		return "", err
 	}
 
 	return ss, nil
-
 }
 
 // I want login handler
-// I want a register handler
 // I also want a jwt function
 func main() {
 	lambda.Start(func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		switch request.Path {
+		case "/login":
+			return LoginHandler(request)
 		case "/register":
 			return RegisterHandler(request)
 		default:

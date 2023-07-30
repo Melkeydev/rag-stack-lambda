@@ -40,5 +40,10 @@ export class RagStackCdkStack extends Stack {
     const registerIntegration = new apigw.LambdaIntegration(myFunction);
     const registerResource = api.root.addResource("register");
     registerResource.addMethod("POST", registerIntegration);
+
+    // Define the '/login' resource and method
+    const loginIntegration = new apigw.LambdaIntegration(myFunction);
+    const loginResource = api.root.addResource("login");
+    loginResource.addMethod("POST", loginIntegration);
   }
 }
