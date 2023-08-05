@@ -2,16 +2,15 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 
+	ragCrypto "melkeydev/ragStackCDK/clients/crypto"
+	ragDynamo "melkeydev/ragStackCDK/clients/dynamo"
+	ragJWT "melkeydev/ragStackCDK/clients/jwt"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/golang-jwt/jwt"
 )
 
 type MyEvent struct {
@@ -32,13 +31,8 @@ const (
 	userTableName = "user-table-name"
 )
 
-// Right now this doesnt do a whole much
-// This was just to handle some logic
-
 func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var registerReq RegisterRequest
-
-	// we need to unmarshal the request into our struct
 
 	err := json.Unmarshal([]byte(request.Body), &registerReq)
 	if err != nil {
@@ -47,37 +41,30 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 		return events.APIGatewayProxyResponse{Body: "Invalid Request"}, err
 	}
 
-	fmt.Println(registerReq.Username)
-
-	// We need to obviously validate the password and username
-	// Create an AWS session and Insert these into my DynamoDB
-
-	sess := session.Must(session.NewSession())
-	DDB := dynamodb.New(sess)
-
-	// Insert the item in dynamo
-	item := &dynamodb.PutItemInput{
-		Item: map[string]*dynamodb.AttributeValue{
-			"username": {
-				S: aws.String(registerReq.Username),
-			},
-			"password": {
-				S: aws.String(registerReq.Password),
-			},
-		},
-		TableName: aws.String(userTableName),
+	// Validate if the user already exists in DynamoDB
+	// TODO: This should be something like email and/or username
+	_, err = ragDynamo.GetUserFromDynamoDB(registerReq.Username)
+	if err == nil {
+		return events.APIGatewayProxyResponse{Body: "Username already exists", StatusCode: http.StatusBadRequest}, nil
 	}
 
-	_, err = DDB.PutItem(item)
+	hashedPassword, err := ragCrypto.GeneratePassword(registerReq.Password)
 	if err != nil {
-		log.Printf("Failed to input item into user DDB: %v", err)
-		return events.APIGatewayProxyResponse{Body: "Internal Server Error - DDB", StatusCode: 500}, err
+		return events.APIGatewayProxyResponse{Body: "Invalid request", StatusCode: http.StatusBadRequest}, nil
 	}
 
-	token, err := generateToken(registerReq.Username)
+	// token, err := generateToken(registerReq.Username)
+	token, err := ragJWT.GenerateToken(registerReq.Username)
 	if err != nil {
 		log.Print("Could not issue jwt token")
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token", StatusCode: 500}, err
+	}
+
+	// Store the username and hashed password in DynamoDB
+	err = ragDynamo.AddUserToDynamoDB(registerReq.Username, string(hashedPassword), token)
+	if err != nil {
+		log.Printf("Failed to add user to DynamoDB: %v", err)
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error - DDB", StatusCode: http.StatusInternalServerError}, nil
 	}
 
 	responseBody := map[string]string{
@@ -101,13 +88,30 @@ func LoginHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxy
 		return events.APIGatewayProxyResponse{Body: "Invalid Request"}, err
 	}
 
-	// We need to validate the password from DDB to the one in the request
-	// A call to the K:V store and then do some matching
+	// Need server side validaton from inputs
+	user, err := ragDynamo.GetUserFromDynamoDB(loginReq.Username)
+	if err != nil {
+		log.Printf("Failed to retrieve user from DynamoDB: %v", err)
+		return events.APIGatewayProxyResponse{Body: "Invalid username or password", StatusCode: http.StatusUnauthorized}, nil
+	}
 
-	token, err := generateToken(loginReq.Password)
+	// Validate password
+	if !ragCrypto.ComparePasswords(user.Password, loginReq.Password) {
+		return events.APIGatewayProxyResponse{Body: "Invalid username or password", StatusCode: http.StatusUnauthorized}, nil
+	}
+
+	// Passwords match, generate and store a new JWT token
+	token, err := ragJWT.GenerateToken(loginReq.Password)
 	if err != nil {
 		log.Print("Could not issue jwt token")
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token", StatusCode: 500}, err
+	}
+
+	// Update the user's token in the database
+	err = ragDynamo.UpdateUserTokenInDynamoDB(loginReq.Username, token)
+	if err != nil {
+		log.Printf("Failed to update user's token in DynamoDB: %v", err)
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error", StatusCode: http.StatusInternalServerError}, nil
 	}
 
 	responseBody := map[string]string{
@@ -122,37 +126,6 @@ func LoginHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxy
 
 }
 
-// Returns the actual token string and a error
-func generateToken(username string) (string, error) {
-	// TODO: this should come from env
-	mySigningKey := []byte("randomString")
-
-	type MyCustomClaims struct {
-		Username string `json:"username"`
-		jwt.StandardClaims
-	}
-
-	claims := MyCustomClaims{
-		username,
-		jwt.StandardClaims{
-			ExpiresAt: 15000,
-			Issuer:    "test",
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	ss, err := token.SignedString(mySigningKey)
-	if err != nil {
-
-		log.Printf("Failed to sign the token due to: %v", err)
-		return "", err
-	}
-
-	return ss, nil
-}
-
-// I want login handler
-// I also want a jwt function
 func main() {
 	lambda.Start(func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		switch request.Path {

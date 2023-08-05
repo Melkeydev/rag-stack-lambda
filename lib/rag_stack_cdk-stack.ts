@@ -18,12 +18,12 @@ export class RagStackCdkStack extends Stack {
 
     // Define the Lambda function
     const myFunction = new lambda.Function(this, "MyFunction", {
-      code: lambda.Code.fromAsset("lambda"),
-      handler: "main",
-      runtime: lambda.Runtime.GO_1_X,
-      environment: {
-        // Rename to user table
-        TABLE_NAME: table.tableName,
+    code: lambda.Code.fromAsset("lambda"),
+    handler: "main",
+    runtime: lambda.Runtime.GO_1_X,
+    environment: {
+      // Rename to user table
+      TABLE_NAME: table.tableName,
       },
     });
 
