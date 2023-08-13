@@ -18,12 +18,12 @@ export class RagStackCdkStack extends Stack {
 
     // Define the Lambda function
     const myFunction = new lambda.Function(this, "MyFunction", {
-    code: lambda.Code.fromAsset("lambda"),
-    handler: "main",
-    runtime: lambda.Runtime.GO_1_X,
-    environment: {
-      // Rename to user table
-      TABLE_NAME: table.tableName,
+      code: lambda.Code.fromAsset("lambda"),
+      handler: "main",
+      runtime: lambda.Runtime.GO_1_X,
+      environment: {
+        // Rename to user table
+        TABLE_NAME: table.tableName,
       },
     });
 
@@ -45,5 +45,10 @@ export class RagStackCdkStack extends Stack {
     const loginIntegration = new apigw.LambdaIntegration(myFunction);
     const loginResource = api.root.addResource("login");
     loginResource.addMethod("POST", loginIntegration);
+
+    // Define the '/protected' resource and method
+    const protectedIntegration = new apigw.LambdaIntegration(myFunction);
+    const protectedResource = api.root.addResource("protected");
+    protectedResource.addMethod("GET", protectedIntegration);
   }
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -126,6 +127,17 @@ func LoginHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxy
 
 }
 
+func ProtectedHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	username, ok := request.RequestContext.Authorizer["username"].(string)
+	if !ok {
+		return events.APIGatewayProxyResponse{Body: "Unauthorized", StatusCode: http.StatusForbidden}, nil
+	}
+
+	responseBody := fmt.Sprintf("Hey %s - this is a protected route", username)
+
+	return events.APIGatewayProxyResponse{Body: string(responseBody), StatusCode: 200}, nil
+}
+
 func main() {
 	lambda.Start(func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		switch request.Path {
@@ -133,6 +145,8 @@ func main() {
 			return LoginHandler(request)
 		case "/register":
 			return RegisterHandler(request)
+		case "/protected":
+			return ragJWT.ValidateJWTMiddleware(ProtectedHandler)(request)
 		default:
 			return events.APIGatewayProxyResponse{Body: "Not Found", StatusCode: http.StatusNotFound}, nil
 		}
