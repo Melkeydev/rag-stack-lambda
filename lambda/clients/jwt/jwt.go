@@ -2,24 +2,27 @@ package jwt
 
 import (
 	"log"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 )
+
+type MyCustomClaims struct {
+	Username string `json:"username"`
+	jwt.StandardClaims
+}
 
 func GenerateToken(username string) (string, error) {
 	// TODO: this should come from env
 	mySigningKey := []byte("randomString")
 
-	type MyCustomClaims struct {
-		Username string `json:"username"`
-		jwt.StandardClaims
-	}
+	expirationTime := time.Now().Add(15 * time.Minute) // 15 minutes from now
 
 	// TODO: Issue should also come from env
 	claims := MyCustomClaims{
 		username,
 		jwt.StandardClaims{
-			ExpiresAt: 15000,
+			ExpiresAt: expirationTime.Unix(),
 			Issuer:    "test",
 		},
 	}
