@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -17,16 +16,11 @@ func ValidateJWTMiddleware(next func(request events.APIGatewayProxyRequest) (eve
 			return events.APIGatewayProxyResponse{Body: "Missing Auth Token", StatusCode: http.StatusUnauthorized}, nil
 		}
 
-		fmt.Println("this is the tokenString", tokenString)
-
 		mySigningKey := []byte("randomString")
 
 		token, err := jwt.ParseWithClaims(tokenString, &MyCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 			return mySigningKey, nil
 		})
-
-		fmt.Println("this is the token", token)
-		fmt.Println("this is the error", err)
 
 		if err != nil || !token.Valid {
 			return events.APIGatewayProxyResponse{Body: "Invalid or Expired Token", StatusCode: http.StatusForbidden}, nil
