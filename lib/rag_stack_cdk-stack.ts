@@ -50,5 +50,10 @@ export class RagStackCdkStack extends Stack {
     const protectedIntegration = new apigw.LambdaIntegration(myFunction);
     const protectedResource = api.root.addResource("protected");
     protectedResource.addMethod("GET", protectedIntegration);
+
+    // Define the '/refresh' resource and method
+    const refreshIntegration = new apigw.LambdaIntegration(myFunction);
+    const refreshResource = api.root.addResource("refresh");
+    refreshResource.addMethod("GET", refreshIntegration);
   }
 }

@@ -49,6 +49,37 @@ func GetUserFromDynamoDB(username string) (*User, error) {
 	return &user, nil
 }
 
+func ValidateRefreshTokenInDynamoDB(username string, refreshToken string) bool {
+	sess := session.Must(session.NewSession())
+	svc := dynamodb.New(sess)
+
+	input := &dynamodb.GetItemInput{
+		TableName: aws.String(TABLE_NAME),
+		Key: map[string]*dynamodb.AttributeValue{
+			"username": {
+				S: aws.String(username),
+			},
+		},
+	}
+
+	result, err := svc.GetItem(input)
+	if err != nil {
+		// TODO: Handle error
+		return false
+	}
+
+	if len(result.Item) == 0 {
+		// TODO: Handle error
+		return false
+	}
+
+	storedHashedToken := aws.StringValue(result.Item["hashedToken"].S)
+	fmt.Println("this is the stored value", storedHashedToken)
+	fmt.Println("this is thr refresh token passed in", refreshToken)
+
+	return storedHashedToken == refreshToken
+}
+
 func AddUserToDynamoDB(username string, password string, hashedToken string) error {
 	sess := session.Must(session.NewSession())
 	dynamoDB := dynamodb.New(sess)

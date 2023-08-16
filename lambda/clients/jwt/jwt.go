@@ -1,8 +1,11 @@
 package jwt
 
 import (
+	"errors"
 	"log"
 	"time"
+
+	ragDynamo "melkeydev/ragStackCDK/clients/dynamo"
 
 	"github.com/golang-jwt/jwt"
 )
@@ -12,7 +15,7 @@ type MyCustomClaims struct {
 	jwt.StandardClaims
 }
 
-func GenerateToken(username string) (string, error) {
+func GenerateAccessToken(username string) (string, error) {
 	// TODO: this should come from env
 	mySigningKey := []byte("randomString")
 
@@ -27,13 +30,56 @@ func GenerateToken(username string) (string, error) {
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	ss, err := token.SignedString(mySigningKey)
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	acessString, err := accessToken.SignedString(mySigningKey)
 	if err != nil {
-
 		log.Printf("Failed to sign the token due to: %v", err)
 		return "", err
 	}
 
-	return ss, nil
+	return acessString, nil
+}
+
+func GenerateRefreshToken(username string) (string, error) {
+	expirationTimeRefresh := time.Now().Add(30 * 24 * time.Hour) // 30 days from now
+	refreshClaims := MyCustomClaims{
+		Username: username,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTimeRefresh.Unix(),
+			Issuer:    "test",
+		},
+	}
+
+	mySigningKey := []byte("randomString")
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshString, err := refreshToken.SignedString(mySigningKey)
+
+	if err != nil {
+		return "", err
+	}
+
+	return refreshString, nil
+}
+
+func ValidateRefreshToken(refreshToken string) (string, error) {
+	mySigningKey := []byte("randomString")
+	token, err := jwt.ParseWithClaims(refreshToken, &MyCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return mySigningKey, nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	claims, ok := token.Claims.(*MyCustomClaims)
+	if !ok || !token.Valid {
+		return "", errors.New("Invalid or expired refresh token")
+	}
+
+	valid := ragDynamo.ValidateRefreshTokenInDynamoDB(claims.Username, refreshToken)
+	if !valid {
+		return "", errors.New("Invalid refresh token")
+	}
+
+	return claims.Username, nil
 }
