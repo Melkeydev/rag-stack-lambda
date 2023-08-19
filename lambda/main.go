@@ -40,6 +40,7 @@ type App struct {
 	jwt ragJWT.TokenValidator
 }
 
+// TODO: is this even the best approach?
 func NewApp(db ragDynamo.UserStorageDB, jwt ragJWT.TokenValidator) *App {
 	return &App{
 		db:  ragDynamo.NewDynamoDBClient(),
