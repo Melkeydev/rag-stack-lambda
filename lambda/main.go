@@ -35,7 +35,19 @@ const (
 	userTableName = "user-table-name"
 )
 
-func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+type App struct {
+	db  ragDynamo.UserStorageDB
+	jwt ragJWT.TokenValidator
+}
+
+func NewApp(db ragDynamo.UserStorageDB, jwt ragJWT.TokenValidator) *App {
+	return &App{
+		db:  ragDynamo.NewDynamoDBClient(),
+		jwt: ragJWT.NewJWTClient(db),
+	}
+}
+
+func (app *App) RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var registerReq RegisterRequest
 
 	err := json.Unmarshal([]byte(request.Body), &registerReq)
@@ -45,8 +57,7 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 	}
 
 	// Validate if the user already exists in DynamoDB
-	// TODO: This should be something like email and/or username
-	_, err = ragDynamo.GetUserFromDynamoDB(registerReq.Username)
+	_, err = app.db.GetUser(registerReq.Username)
 	if err == nil {
 		return events.APIGatewayProxyResponse{Body: "Username already exists", StatusCode: http.StatusBadRequest}, nil
 	}
@@ -56,20 +67,20 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 		return events.APIGatewayProxyResponse{Body: "Invalid request", StatusCode: http.StatusBadRequest}, nil
 	}
 
-	accessToken, err := ragJWT.GenerateAccessToken(registerReq.Username)
+	accessToken, err := app.jwt.GenerateAccessToken(registerReq.Username)
 	if err != nil {
 		log.Print("Could not issue jwt token")
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token", StatusCode: 500}, err
 	}
 
-	refreshToken, err := ragJWT.GenerateRefreshToken(registerReq.Username)
+	refreshToken, err := app.jwt.GenerateRefreshToken(registerReq.Username)
 	if err != nil {
 		log.Print("Could not issue refresh token")
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token", StatusCode: 500}, err
 	}
 
 	// Store the username and hashed password in DynamoDB
-	err = ragDynamo.AddUserToDynamoDB(registerReq.Username, string(hashedPassword), refreshToken)
+	err = app.db.AddUserToDB(registerReq.Username, string(hashedPassword), refreshToken)
 	if err != nil {
 		log.Printf("Failed to add user to DynamoDB: %v", err)
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error - DDB", StatusCode: http.StatusInternalServerError}, nil
@@ -93,10 +104,9 @@ func RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPr
 	}
 
 	return response, nil
-
 }
 
-func LoginHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func (app *App) LoginHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var loginReq LoginRequest
 
 	err := json.Unmarshal([]byte(request.Body), &loginReq)
@@ -105,29 +115,34 @@ func LoginHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxy
 		return events.APIGatewayProxyResponse{Body: "Invalid Request"}, err
 	}
 
-	user, err := ragDynamo.GetUserFromDynamoDB(loginReq.Username)
+	// Check if the user exists in DynamoDB
+	user, err := app.db.GetUser(loginReq.Username)
 	if err != nil {
 		log.Printf("Failed to retrieve user from DynamoDB: %v", err)
 		return events.APIGatewayProxyResponse{Body: "Invalid username or password", StatusCode: http.StatusUnauthorized}, nil
 	}
 
+	// Check password is correct for user
 	if !ragCrypto.ComparePasswords(user.Password, loginReq.Password) {
 		return events.APIGatewayProxyResponse{Body: "Invalid username or password", StatusCode: http.StatusUnauthorized}, nil
 	}
 
-	accessToken, err := ragJWT.GenerateAccessToken(loginReq.Username)
+	// Create new access token
+	accessToken, err := app.jwt.GenerateAccessToken(loginReq.Username)
 	if err != nil {
 		log.Print("Could not issue jwt token")
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token", StatusCode: 500}, err
 	}
 
-	refreshToken, err := ragJWT.GenerateRefreshToken(loginReq.Username)
+	// create new refresh token
+	refreshToken, err := app.jwt.GenerateRefreshToken(loginReq.Username)
 	if err != nil {
 		log.Print("Could not issue refresh token")
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error - Generating token", StatusCode: 500}, err
 	}
 
-	err = ragDynamo.UpdateUserTokenInDynamoDB(loginReq.Username, refreshToken)
+	// update refresh token in DynamoDB
+	err = app.db.UpdateUserToken(loginReq.Username, refreshToken)
 	if err != nil {
 		log.Printf("Failed to update user's token in DynamoDB: %v", err)
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error", StatusCode: http.StatusInternalServerError}, nil
@@ -151,10 +166,9 @@ func LoginHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxy
 	}
 
 	return response, nil
-
 }
 
-func ProtectedHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func (app *App) ProtectedHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	username, ok := request.RequestContext.Authorizer["username"].(string)
 	if !ok {
 		return events.APIGatewayProxyResponse{Body: "Unauthorized", StatusCode: http.StatusForbidden}, nil
@@ -177,25 +191,25 @@ func extractRefreshTokenFromCookie(request events.APIGatewayProxyRequest) (strin
 	return "", errors.New("Refresh Token not found in cookies")
 }
 
-func RefreshHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func (app *App) RefreshHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
 	refreshToken, err := extractRefreshTokenFromCookie(request)
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: "Missing Refresh Token", StatusCode: http.StatusBadRequest}, nil
 	}
 
-	username, err := ragJWT.ValidateRefreshToken(refreshToken)
+	username, err := app.jwt.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: "Invalid Refresh Token", StatusCode: http.StatusUnauthorized}, nil
 	}
 
-	accessToken, err := ragJWT.GenerateAccessToken(username)
+	accessToken, err := app.jwt.GenerateAccessToken(username)
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error", StatusCode: http.StatusInternalServerError}, nil
 	}
 
 	// Create an HTTP-only cookie for the new refresh token
-	newRefreshToken, err := ragJWT.GenerateRefreshToken(username)
+	newRefreshToken, err := app.jwt.GenerateRefreshToken(username)
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: "Internal Server Error", StatusCode: http.StatusInternalServerError}, nil
 	}
@@ -204,9 +218,9 @@ func RefreshHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPro
 		Name:     "refresh_token",
 		Value:    newRefreshToken,
 		HttpOnly: true,
-		Secure:   true,                                // Ensure your site uses HTTPS for this to work
-		SameSite: http.SameSiteLaxMode,                // Lax, Strict, or None
-		Expires:  time.Now().Add(30 * 24 * time.Hour), // 30 days from now
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		Path:     "/",
 	}
 
@@ -222,16 +236,21 @@ func RefreshHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPro
 }
 
 func main() {
+	db := ragDynamo.NewDynamoDBClient()
+	jwt := ragJWT.NewJWTClient(db)
+
+	app := NewApp(db, jwt)
+
 	lambda.Start(func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		switch request.Path {
 		case "/login":
-			return LoginHandler(request)
+			return app.LoginHandler(request)
 		case "/register":
-			return RegisterHandler(request)
+			return app.RegisterHandler(request)
 		case "/refresh":
-			return RefreshHandler(request)
+			return app.RefreshHandler(request)
 		case "/protected":
-			return ragJWT.ValidateJWTMiddleware(ProtectedHandler)(request)
+			return ragJWT.ValidateJWTMiddleware(app.ProtectedHandler)(request)
 		default:
 			return events.APIGatewayProxyResponse{Body: "Not Found", StatusCode: http.StatusNotFound}, nil
 		}

@@ -10,6 +10,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
+type UserStorageDB interface {
+	GetUser(username string) (*User, error)
+	ValidateRefreshToken(username, refreshToken string) bool
+	AddUserToDB(username, password, hashedToken string) error
+	UpdateUserToken(username, token string) error
+}
+
 const (
 	TABLE_NAME = "user-table-name"
 )
@@ -19,11 +26,21 @@ type User struct {
 	Password string `json:"password"`
 }
 
-func GetUserFromDynamoDB(username string) (*User, error) {
-	sess := session.Must(session.NewSession())
-	dynamoDB := dynamodb.New(sess)
+type DynamoDBClient struct {
+	db *dynamodb.DynamoDB
+}
 
-	result, err := dynamoDB.GetItem(&dynamodb.GetItemInput{
+func NewDynamoDBClient() UserStorageDB {
+	sess := session.Must(session.NewSession())
+	db := dynamodb.New(sess)
+
+	return &DynamoDBClient{
+		db: db,
+	}
+}
+
+func (db *DynamoDBClient) GetUser(username string) (*User, error) {
+	result, err := db.db.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(TABLE_NAME),
 		Key: map[string]*dynamodb.AttributeValue{
 			"username": {
@@ -49,10 +66,7 @@ func GetUserFromDynamoDB(username string) (*User, error) {
 	return &user, nil
 }
 
-func ValidateRefreshTokenInDynamoDB(username string, refreshToken string) bool {
-	sess := session.Must(session.NewSession())
-	svc := dynamodb.New(sess)
-
+func (db *DynamoDBClient) ValidateRefreshToken(username string, refreshToken string) bool {
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(TABLE_NAME),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -62,7 +76,7 @@ func ValidateRefreshTokenInDynamoDB(username string, refreshToken string) bool {
 		},
 	}
 
-	result, err := svc.GetItem(input)
+	result, err := db.db.GetItem(input)
 	if err != nil {
 		// TODO: Handle error
 		return false
@@ -74,16 +88,10 @@ func ValidateRefreshTokenInDynamoDB(username string, refreshToken string) bool {
 	}
 
 	storedHashedToken := aws.StringValue(result.Item["hashedToken"].S)
-	fmt.Println("this is the stored value", storedHashedToken)
-	fmt.Println("this is thr refresh token passed in", refreshToken)
-
 	return storedHashedToken == refreshToken
 }
 
-func AddUserToDynamoDB(username string, password string, hashedToken string) error {
-	sess := session.Must(session.NewSession())
-	dynamoDB := dynamodb.New(sess)
-
+func (db *DynamoDBClient) AddUserToDB(username string, password string, hashedToken string) error {
 	item := &dynamodb.PutItemInput{
 		Item: map[string]*dynamodb.AttributeValue{
 			"username": {
@@ -99,15 +107,12 @@ func AddUserToDynamoDB(username string, password string, hashedToken string) err
 		TableName: aws.String(TABLE_NAME),
 	}
 
-	_, err := dynamoDB.PutItem(item)
+	_, err := db.db.PutItem(item)
 	return err
 
 }
 
-func UpdateUserTokenInDynamoDB(username, token string) error {
-	sess := session.Must(session.NewSession())
-	svc := dynamodb.New(sess)
-
+func (db *DynamoDBClient) UpdateUserToken(username, token string) error {
 	input := &dynamodb.UpdateItemInput{
 		TableName: aws.String(os.Getenv("TABLE_NAME")),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -123,7 +128,7 @@ func UpdateUserTokenInDynamoDB(username, token string) error {
 		UpdateExpression: aws.String("SET token = :token"),
 	}
 
-	_, err := svc.UpdateItem(input)
+	_, err := db.db.UpdateItem(input)
 	if err != nil {
 		return err
 	}

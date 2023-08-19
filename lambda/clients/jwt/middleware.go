@@ -10,12 +10,14 @@ import (
 
 func ValidateJWTMiddleware(next func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error)) func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	return func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+
 		// the actual logic for our middleware
 		tokenString := extractTokenFromHeader(request.Headers)
 		if tokenString == "" {
 			return events.APIGatewayProxyResponse{Body: "Missing Auth Token", StatusCode: http.StatusUnauthorized}, nil
 		}
 
+		// TODO: move this to env
 		mySigningKey := []byte("randomString")
 
 		token, err := jwt.ParseWithClaims(tokenString, &MyCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
@@ -23,12 +25,12 @@ func ValidateJWTMiddleware(next func(request events.APIGatewayProxyRequest) (eve
 		})
 
 		if err != nil || !token.Valid {
-			return events.APIGatewayProxyResponse{Body: "Invalid or Expired Token", StatusCode: http.StatusForbidden}, nil
+			return events.APIGatewayProxyResponse{Body: "Invalid or Expired Token", StatusCode: http.StatusUnauthorized}, nil
 		}
 
 		claims, ok := token.Claims.(*MyCustomClaims)
 		if !ok {
-			return events.APIGatewayProxyResponse{Body: "Invalid Token or Expired Token", StatusCode: http.StatusForbidden}, nil
+			return events.APIGatewayProxyResponse{Body: "Invalid Token or Expired Token", StatusCode: http.StatusUnauthorized}, nil
 		}
 
 		request.RequestContext.Authorizer = map[string]interface{}{

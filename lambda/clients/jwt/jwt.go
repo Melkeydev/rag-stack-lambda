@@ -10,12 +10,28 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
+type TokenValidator interface {
+	GenerateAccessToken(username string) (string, error)
+	GenerateRefreshToken(username string) (string, error)
+	ValidateRefreshToken(refreshToken string) (string, error)
+}
+
+type JWTClient struct {
+	db ragDynamo.UserStorageDB
+}
+
+func NewJWTClient(db ragDynamo.UserStorageDB) TokenValidator {
+	return &JWTClient{
+		db: db,
+	}
+}
+
 type MyCustomClaims struct {
 	Username string `json:"username"`
 	jwt.StandardClaims
 }
 
-func GenerateAccessToken(username string) (string, error) {
+func (j *JWTClient) GenerateAccessToken(username string) (string, error) {
 	// TODO: this should come from env
 	mySigningKey := []byte("randomString")
 
@@ -40,7 +56,7 @@ func GenerateAccessToken(username string) (string, error) {
 	return acessString, nil
 }
 
-func GenerateRefreshToken(username string) (string, error) {
+func (j *JWTClient) GenerateRefreshToken(username string) (string, error) {
 	expirationTimeRefresh := time.Now().Add(30 * 24 * time.Hour) // 30 days from now
 	refreshClaims := MyCustomClaims{
 		Username: username,
@@ -61,7 +77,7 @@ func GenerateRefreshToken(username string) (string, error) {
 	return refreshString, nil
 }
 
-func ValidateRefreshToken(refreshToken string) (string, error) {
+func (j *JWTClient) ValidateRefreshToken(refreshToken string) (string, error) {
 	mySigningKey := []byte("randomString")
 	token, err := jwt.ParseWithClaims(refreshToken, &MyCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return mySigningKey, nil
@@ -76,7 +92,7 @@ func ValidateRefreshToken(refreshToken string) (string, error) {
 		return "", errors.New("Invalid or expired refresh token")
 	}
 
-	valid := ragDynamo.ValidateRefreshTokenInDynamoDB(claims.Username, refreshToken)
+	valid := j.db.ValidateRefreshToken(claims.Username, refreshToken)
 	if !valid {
 		return "", errors.New("Invalid refresh token")
 	}
