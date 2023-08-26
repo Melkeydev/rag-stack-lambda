@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+
+	_ "github.com/lib/pq"
 )
 
 type MyEvent struct {
@@ -236,6 +239,36 @@ func (app *App) RefreshHandler(request events.APIGatewayProxyRequest) (events.AP
 	return response, nil
 }
 
+func SeedDatabaseHandler() (events.APIGatewayProxyResponse, error) {
+	connectionString := "user=postgres password=postgres dbname=ragstackcdkstack-rdsdatabaseda351f35-pzt9quiob2l7 host=ragstackcdkstack-rdsdatabaseda351f35-pzt9quiob2l7.ca9nnjlv85uj.us-west-2.rds.amazonaws.com port=5432 sslmode=require"
+	rds, err := sql.Open("postgres", connectionString)
+	if err != nil {
+		log.Fatal(err)
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error", StatusCode: http.StatusInternalServerError}, err
+	}
+	defer rds.Close()
+
+	// Define your SQL statements for creating tables
+	createUsersTableSQL := `
+		CREATE TABLE IF NOT EXISTS users (
+			id SERIAL PRIMARY KEY,
+			username VARCHAR(255) NOT NULL,
+			password VARCHAR(255) NOT NULL,
+			token VARCHAR(255)
+		);
+	`
+
+	// Execute the SQL statements to create tables
+	_, err = rds.Exec(createUsersTableSQL)
+	if err != nil {
+		log.Printf("Failed to create tables: %v", err)
+		return events.APIGatewayProxyResponse{Body: "Internal Server Error", StatusCode: http.StatusInternalServerError}, err
+	}
+
+	response := "Tables seeded successfully"
+	return events.APIGatewayProxyResponse{Body: response, StatusCode: http.StatusOK}, nil
+}
+
 func main() {
 	db := ragDynamo.NewDynamoDBClient()
 	jwt := ragJWT.NewJWTClient(db)
@@ -252,6 +285,8 @@ func main() {
 			return app.RefreshHandler(request)
 		case "/protected":
 			return ragJWT.ValidateJWTMiddleware(app.ProtectedHandler)(request)
+		case "/seed":
+			return SeedDatabaseHandler()
 		default:
 			return events.APIGatewayProxyResponse{Body: "Not Found", StatusCode: http.StatusNotFound}, nil
 		}

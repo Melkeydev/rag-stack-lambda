@@ -3,6 +3,8 @@ import { Stack, StackProps } from "aws-cdk-lib";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigw from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import { VPC } from "./vpc";
+import { RDS } from "./rds";
 import { Construct } from "constructs";
 
 export class RagStackCdkStack extends Stack {
@@ -16,11 +18,22 @@ export class RagStackCdkStack extends Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // Define VPC
+    const vpc = new VPC(this, "VPC");
+
+    // Define the RDS Instance
+    const rds = new RDS(this, "rds", {
+      vpc: vpc.vpc,
+      securityGroup: vpc.securityGroup,
+    });
+
     // Define the Lambda function
     const myFunction = new lambda.Function(this, "MyFunction", {
       code: lambda.Code.fromAsset("lambda"),
       handler: "main",
       runtime: lambda.Runtime.GO_1_X,
+      vpc: vpc.vpc,
+      securityGroups: [vpc.securityGroup],
       environment: {
         // Rename to user table
         TABLE_NAME: table.tableName,
@@ -55,5 +68,10 @@ export class RagStackCdkStack extends Stack {
     const refreshIntegration = new apigw.LambdaIntegration(myFunction);
     const refreshResource = api.root.addResource("refresh");
     refreshResource.addMethod("GET", refreshIntegration);
+
+    // Define the '/seed' resource and method
+    const seedIntegration = new apigw.LambdaIntegration(myFunction);
+    const seedResource = api.root.addResource("seed");
+    seedResource.addMethod("GET", seedIntegration);
   }
 }
