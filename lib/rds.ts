@@ -28,7 +28,7 @@ export class RDS extends Construct {
         InstanceClass.BURSTABLE4_GRAVITON,
         InstanceSize.SMALL
       ),
-      multiAz: false,
+      multiAz: true,
       securityGroups: [props.securityGroup],
       credentials: {
         username: "testuser",

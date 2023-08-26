@@ -240,7 +240,7 @@ func (app *App) RefreshHandler(request events.APIGatewayProxyRequest) (events.AP
 }
 
 func SeedDatabaseHandler() (events.APIGatewayProxyResponse, error) {
-	connectionString := "user=postgres password=postgres dbname=ragstackcdkstack-rdsdatabaseda351f35-pzt9quiob2l7 host=ragstackcdkstack-rdsdatabaseda351f35-pzt9quiob2l7.ca9nnjlv85uj.us-west-2.rds.amazonaws.com port=5432 sslmode=require"
+	connectionString := "user=testuser password=password dbname=postgres host=ragstackcdkstack-rdsdatabaseda351f35-ehk7jhtfhthe.ca9nnjlv85uj.us-west-2.rds.amazonaws.com port=5432 sslmode=require"
 	rds, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatal(err)
@@ -253,8 +253,7 @@ func SeedDatabaseHandler() (events.APIGatewayProxyResponse, error) {
 		CREATE TABLE IF NOT EXISTS users (
 			id SERIAL PRIMARY KEY,
 			username VARCHAR(255) NOT NULL,
-			password VARCHAR(255) NOT NULL,
-			token VARCHAR(255)
+			password VARCHAR(255) NOT NULL, token VARCHAR(255)
 		);
 	`
 
