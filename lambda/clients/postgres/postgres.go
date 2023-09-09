@@ -7,9 +7,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// What other alternative can we use besides RDS?
-// On AWS not much..
-
 type UserStorageDB interface {
 	GetUser(username string) (*User, error)
 	ValidateRefreshToken(username, refreshToken string) bool
@@ -58,9 +55,4 @@ func (db *RDSClient) GetUser(username string) (*User, error) {
 		return nil, err
 	}
 	return &user, nil
-}
-
-func (db *RDSClient) AddUserToDB(username, password, hashedToken string) error {
-	_, err := db.db.Exec("INSERT INTO users (username, password, hashedToken) VALUES ($1, $2, $3)", username, password, hashedToken)
-	return err
 }

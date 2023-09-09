@@ -10,10 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-// This is not binding to anything
-// It can be used with a Dynamo Client
-// It can be used with a postges client
-// it can be used with any DB client
 type UserStorageDB interface {
 	GetUser(username string) (*User, error)
 	ValidateRefreshToken(username, refreshToken string) bool

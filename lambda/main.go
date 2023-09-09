@@ -248,7 +248,6 @@ func SeedDatabaseHandler() (events.APIGatewayProxyResponse, error) {
 	}
 	defer rds.Close()
 
-	// Define your SQL statements for creating tables
 	createUsersTableSQL := `
 		CREATE TABLE IF NOT EXISTS users (
 			id SERIAL PRIMARY KEY,
@@ -257,7 +256,6 @@ func SeedDatabaseHandler() (events.APIGatewayProxyResponse, error) {
 		);
 	`
 
-	// Execute the SQL statements to create tables
 	_, err = rds.Exec(createUsersTableSQL)
 	if err != nil {
 		log.Printf("Failed to create tables: %v", err)
@@ -269,6 +267,7 @@ func SeedDatabaseHandler() (events.APIGatewayProxyResponse, error) {
 }
 
 func main() {
+	// Test out the RDS client
 	db := ragDynamo.NewDynamoDBClient()
 	jwt := ragJWT.NewJWTClient(db)
 
