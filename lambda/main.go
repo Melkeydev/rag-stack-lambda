@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -239,31 +238,35 @@ func (app *App) RefreshHandler(request events.APIGatewayProxyRequest) (events.AP
 	return response, nil
 }
 
-func SeedDatabaseHandler() (events.APIGatewayProxyResponse, error) {
-	connectionString := "user=testuser password=password dbname=postgres host=ragstackcdkstack-rdsdatabaseda351f35-ehk7jhtfhthe.ca9nnjlv85uj.us-west-2.rds.amazonaws.com port=5432 sslmode=require"
-	rds, err := sql.Open("postgres", connectionString)
-	if err != nil {
-		log.Fatal(err)
-		return events.APIGatewayProxyResponse{Body: "Internal Server Error", StatusCode: http.StatusInternalServerError}, err
-	}
-	defer rds.Close()
+func (app *App) TestHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	createUsersTableSQL := `
-		CREATE TABLE IF NOT EXISTS users (
-			id SERIAL PRIMARY KEY,
-			username VARCHAR(255) NOT NULL,
-			password VARCHAR(255) NOT NULL, token VARCHAR(255)
-		);
-	`
-
-	_, err = rds.Exec(createUsersTableSQL)
-	if err != nil {
-		log.Printf("Failed to create tables: %v", err)
-		return events.APIGatewayProxyResponse{Body: "Internal Server Error", StatusCode: http.StatusInternalServerError}, err
+	responseBody := map[string]string{
+		"message": "Hi you have hit this route",
 	}
 
-	response := "Tables seeded successfully"
-	return events.APIGatewayProxyResponse{Body: response, StatusCode: http.StatusOK}, nil
+	responseJSON, err := json.Marshal(responseBody)
+	if err != nil {
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       `{"error":"internal server error"}`,
+		}, err
+	}
+
+	response := events.APIGatewayProxyResponse{
+		Body:       string(responseJSON),
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                     "text/plain",
+			"Access-Control-Allow-Origin":      "*",
+			"Access-Control-Allow-Headers":     "Content-Type",
+			"Access-Control-Allow-Methods":     "OPTIONS, POST, GET",
+			"Access-Control-Allow-Credentials": "true",
+		},
+	}
+
+	return response, nil
+
 }
 
 func main() {
@@ -281,10 +284,10 @@ func main() {
 			return app.RegisterHandler(request)
 		case "/refresh":
 			return app.RefreshHandler(request)
+		case "/test":
+			return app.TestHandler(request)
 		case "/protected":
 			return ragJWT.ValidateJWTMiddleware(app.ProtectedHandler)(request)
-		case "/seed":
-			return SeedDatabaseHandler()
 		default:
 			return events.APIGatewayProxyResponse{Body: "Not Found", StatusCode: http.StatusNotFound}, nil
 		}
