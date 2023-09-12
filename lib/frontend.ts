@@ -61,7 +61,7 @@ export class Frontend extends Construct {
               "cd frontend && npm install --legacy-peer-deps && npm run build",
               execOptions
             );
-            fsExtra.copySync("./site/dist", outputDir, {
+            fsExtra.copySync("./frontend/dist", outputDir, {
               ...execOptions,
               recursive: true,
             });
