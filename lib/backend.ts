@@ -7,6 +7,7 @@ import { Construct } from "constructs";
 import { RestApi, LambdaIntegration } from "aws-cdk-lib/aws-apigateway";
 
 export class Backend extends Construct {
+  public readonly apiUrl: string;
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id);
 
@@ -61,5 +62,7 @@ export class Backend extends Construct {
     // Define the '/test' resource and method
     const testResource = api.root.addResource("test");
     testResource.addMethod("GET", integration);
+
+    this.apiUrl = api.url;
   }
 }
