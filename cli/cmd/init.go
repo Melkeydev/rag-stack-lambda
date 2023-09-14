@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"os"
 )
 
 // initCmd represents the init command
@@ -21,7 +22,11 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("init called")
+		workDir, err := os.Getwd()
+		if err != nil {
+			return
+		}
+		fmt.Println(workDir)
 	},
 }
 

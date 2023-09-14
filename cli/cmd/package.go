@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	cp "github.com/otiai10/copy"
 	"os"
 )
 
@@ -28,4 +26,5 @@ func (p  *Project) Create() error {
 
 	// todo
 	// for now just correctly copy template as is w copy package
+	return nil
 }
