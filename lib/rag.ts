@@ -1,4 +1,4 @@
-import * as cdk from "aws-cdk-lib";
+import { CfnOutput } from "aws-cdk-lib";
 import { Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { Backend } from "./backend";
@@ -11,13 +11,6 @@ export class RagStack extends Stack {
     const backend = new Backend(this, "Backend");
     const frontend = new Frontend(this, "Frontend", { apiUrl: backend.apiUrl });
 
-    new cdk.CfnOutput(this, "apiUrl", { value: backend.apiUrl });
-    new cdk.CfnOutput(this, "distribution", {
-      value: frontend.distribution.domainName,
-    });
-
-    new cdk.CfnOutput(this, "siteBucket", {
-      value: frontend.siteBucket.bucketName,
-    });
+    new CfnOutput(this, "DistributionUrl", { value: frontend.distributionUrl });
   }
 }

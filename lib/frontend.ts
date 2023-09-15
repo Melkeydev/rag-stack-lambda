@@ -1,5 +1,3 @@
-import { Source, BucketDeployment } from "aws-cdk-lib/aws-s3-deployment";
-import { Construct } from "constructs";
 import { execSync, ExecSyncOptions } from "child_process";
 import { RemovalPolicy, DockerImage } from "aws-cdk-lib";
 import {
@@ -10,6 +8,8 @@ import {
 } from "aws-cdk-lib/aws-cloudfront";
 import { S3Origin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Bucket } from "aws-cdk-lib/aws-s3";
+import { Source, BucketDeployment } from "aws-cdk-lib/aws-s3-deployment";
+import { Construct } from "constructs";
 import * as fsExtra from "fs-extra";
 
 interface FrontendProps {
@@ -17,22 +17,21 @@ interface FrontendProps {
 }
 
 export class Frontend extends Construct {
-  public readonly siteBucket: Bucket;
-  public readonly distribution: Distribution;
+  distributionUrl: string;
 
   constructor(scope: Construct, id: string, props: FrontendProps) {
     super(scope, id);
 
-    this.siteBucket = new Bucket(this, "frontEndBucket", {
+    const siteBucket = new Bucket(this, "websiteBucket", {
       publicReadAccess: false,
       removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
-    this.distribution = new Distribution(this, "CloudFrontDistribution", {
-      enableLogging: true,
+    const distribution = new Distribution(this, "CloudFrontDistribution", {
       minimumProtocolVersion: SecurityPolicyProtocol.TLS_V1_2_2021,
       defaultBehavior: {
-        origin: new S3Origin(this.siteBucket),
+        origin: new S3Origin(siteBucket),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: CachePolicy.CACHING_DISABLED,
       },
@@ -58,13 +57,10 @@ export class Frontend extends Construct {
               return false;
             }
             execSync(
-              "cd frontend && npm install --legacy-peer-deps && npm run build",
+              "cd frontend && npm install --ci && npm run build",
               execOptions
             );
-            fsExtra.copySync("./frontend/dist", outputDir, {
-              ...execOptions,
-              recursive: true,
-            });
+            fsExtra.copySync("./frontend/dist", outputDir);
             return true;
           },
         },
@@ -77,9 +73,11 @@ export class Frontend extends Construct {
 
     new BucketDeployment(this, "DeployBucket", {
       sources: [bundle, Source.jsonData("config.json", config)],
-      destinationBucket: this.siteBucket,
-      distribution: this.distribution,
+      destinationBucket: siteBucket,
+      distribution: distribution,
       distributionPaths: ["/*"],
     });
+
+    this.distributionUrl = distribution.distributionDomainName;
   }
 }

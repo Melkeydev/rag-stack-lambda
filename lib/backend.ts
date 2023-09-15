@@ -7,7 +7,7 @@ import { Construct } from "constructs";
 import { RestApi, LambdaIntegration } from "aws-cdk-lib/aws-apigateway";
 
 export class Backend extends Construct {
-  public readonly apiUrl: string;
+  public apiUrl: string;
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id);
 
