@@ -15,9 +15,8 @@ type ProjectSchema struct {
 	Deploy string
 	Redis  string
 	CORS   string
+	Git    string
 }
-
-
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
@@ -41,6 +40,11 @@ to quickly create a Cobra application.`,
 		textinput.TextInputRun("myAwesomeApp", "What is your project name?", projectName)
 		myProject.Name = projectName.Output
 
+		selectedGit := &multi.Selection{}
+		gitOptions := []string{"Yes", "No thanks"}
+		gitHeader := fmt.Sprintf("Do you want to initialize git with %s?", myProject.Name)
+		multi.MultiBoxSelectRun(gitOptions, selectedGit, gitHeader)
+		myProject.Git = selectedGit.Choice
 
 		step := 0
 		for step <= 2 {
