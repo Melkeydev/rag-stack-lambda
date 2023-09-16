@@ -38,7 +38,7 @@ to quickly create a Cobra application.`,
 
 		myProject := ProjectSchema{}
 		projectName := &textinput.Output{}
-		textinput.TextInputRun("myapp", "What is your project name?", projectName)
+		textinput.TextInputRun("myAwesomeApp", "What is your project name?", projectName)
 		myProject.Name = projectName.Output
 
 
@@ -50,18 +50,18 @@ to quickly create a Cobra application.`,
 			var header string
 			switch step {
 			case 0:
-				options = []string{"lamda", "ec2"}
-				header = "How do you want to deploy your app?"
+				options = []string{"AWS Lambda", "AWS EC2"}
+				header = fmt.Sprintf("How do you want to deploy %s?", myProject.Name)
 				multi.MultiBoxSelectRun(options, s, header)
 				myProject.Deploy = s.Choice
 			case 1:
-				options = []string{"redis", "none"}
-				header = "Do you want to use redis?"
+				options = []string{"Yes", "No thanks"}
+				header = fmt.Sprintf("Do you want to use redis with %s?", myProject.Name)
 				multi.MultiBoxSelectRun(options, s, header)
 				myProject.Redis = s.Choice
 			case 2:
-				options = []string{"domain", "protocol", "port"}
-				header = "Which CORS rule do you want to use?"
+				options = []string{"Domain", "Protocol", "Port"}
+				header = fmt.Sprintf("Which CORS policy will %s use?", myProject.Name)
 				multi.MultiBoxSelectRun(options, s, header)
 				myProject.CORS = s.Choice
 			}
