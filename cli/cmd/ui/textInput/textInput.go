@@ -7,6 +7,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	exitColor    = lipgloss.NewStyle().Foreground(lipgloss.Color("#E11D48")).Bold(true)
+	titleStyle   = lipgloss.NewStyle().Background(lipgloss.Color("#01FAC6")).Foreground(lipgloss.Color("#030303")).Bold(true).Padding(0, 1, 0)
 )
 
 type (
@@ -37,7 +43,7 @@ func initialModel(placeholder string, header string, output *Output) model {
 	return model{
 		textinput: ti,
 		err:       nil,
-		header:    header,
+		header:    titleStyle.Render(header),
 		output:    output,
 	}
 }
@@ -52,14 +58,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyEnter, tea.KeyCtrlC:
 			if len(m.textinput.Value()) > 1 {
-				m.textinput.Blur()
 				m.output.update(m.textinput.Value())
+
 				return m, tea.Quit
 			}
-			m.textinput.Blur()
-			os.Exit(1)
+			return m, nil
+		}
+		switch msg.String() {
+		case "q", "ctrl+c":
+			tea.Quit()
+			os.Exit(0)
 		}
 	case errorMsg:
 		m.err = msg
@@ -71,7 +81,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return fmt.Sprintf("%s\n\n%s\n\n%s", m.header, m.textinput.View(), "(esc to quit)")
+	return fmt.Sprintf("%s\n\n%s\n\n%s",
+		m.header,
+		m.textinput.View(),
+		fmt.Sprintf("press %s to quit", exitColor.Render("q")))
 }
 
 func TextInputRun(placeholder string, header string, output *Output) {

@@ -3,7 +3,14 @@ package multiselect
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"os"
+)
+
+var (
+	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#01FAC6")).Bold(true)
+	exitColor    = lipgloss.NewStyle().Foreground(lipgloss.Color("#E11D48")).Bold(true)
+	titleStyle   = lipgloss.NewStyle().Background(lipgloss.Color("#01FAC6")).Foreground(lipgloss.Color("#030303")).Bold(true).Padding(0, 1, 0)
 )
 
 type Selection struct {
@@ -31,7 +38,7 @@ func InitialModel(choices []string, selection *Selection, header string) model {
 		choices:  choices,
 		selected: make(map[int]struct{}),
 		choice:   selection,
-		header:   header,
+		header:   titleStyle.Render(header),
 	}
 }
 
@@ -75,19 +82,19 @@ func (m model) View() string {
 	for i, choice := range m.choices {
 		cursor := " "
 		if m.cursor == i {
-			cursor = ">"
+			cursor = focusedStyle.Render(">")
 		}
 
 		checked := " "
 		if _, ok := m.selected[i]; ok {
-			checked = "x"
+			checked = focusedStyle.Render("x")
 		}
 
 		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
 	}
 
-	s += "\nPress y to confirm choice.\n"
-	s += "\nPress q to quit.\n\n"
+	s += fmt.Sprintf("\nPress %s to confirm choice.\n", focusedStyle.Render("y"))
+	s += fmt.Sprintf("\nPress %s to quit.\n\n", exitColor.Render("q"))
 
 	return s
 }
