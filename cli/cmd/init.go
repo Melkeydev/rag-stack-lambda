@@ -84,6 +84,19 @@ to quickly create a Cobra application.`,
 			}
 			step++
 		}
+		spec := Options{
+			Deploy: myProject.Deploy,
+			Redis:  true,
+			CORS:   myProject.CORS,
+			Git:    true,
+		}
+		project := Project{
+			AppName: myProject.Name,
+			Options: &spec,
+		}
+
+		project.Create()
+
 		fmt.Println(myProject)
 	},
 }
