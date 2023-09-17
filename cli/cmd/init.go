@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	multi "github.com/spf13/rag-cli/cmd/ui/multiSelect"
 	textinput "github.com/spf13/rag-cli/cmd/ui/textInput"
@@ -17,6 +18,10 @@ type ProjectSchema struct {
 	CORS   string
 	Git    string
 }
+
+var (
+	logoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#01FAC6")).Bold(true).Padding(1)
+)
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
@@ -34,7 +39,15 @@ to quickly create a Cobra application.`,
 		//	return
 		//}
 		//fmt.Println(workDir)
-
+		logo := `
+██████╗  █████╗  ██████╗ 
+██╔══██╗██╔══██╗██╔════╝ 
+██████╔╝███████║██║  ███╗
+██╔══██╗██╔══██║██║   ██║
+██║  ██║██║  ██║╚██████╔╝
+╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ 
+		`
+		fmt.Printf("%s\n", logoStyle.Render(logo))
 		myProject := ProjectSchema{}
 		projectName := &textinput.Output{}
 		textinput.TextInputRun("myAwesomeApp", "What is your project name?", projectName)
