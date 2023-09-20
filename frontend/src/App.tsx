@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from "react";
-// import reactLogo from "./assets/react.svg";
-// import viteLogo from "/vite.svg";
+import { useState, useEffect } from "react";
 import "./App.css";
 
 let config = {
@@ -9,19 +7,27 @@ let config = {
 };
 
 async function readConfig() {
-  config = await fetch("./config.json").then((response) => response.json());
+  if (import.meta.env.MODE === "development") {
+    // Use .env file during development
+    config.apiUrl = import.meta.env.VITE_API_URL || "";
+  } else {
+    // Use config.json during production
+    config = await fetch("./config.json").then((response) => response.json());
+  }
 }
-
-readConfig();
 
 function App() {
   const [count, setCount] = useState(0);
 
-  async function callTest() {
-    console.log("hi");
+  useEffect(() => {
+    readConfig().then(() => {
+      console.log("this config.apiUrl", config.apiUrl);
+    });
+  }, []);
 
+  async function callTest() {
     try {
-      const response = await fetch(config.apiUrl, {
+      const response = await fetch(`${config.apiUrl}/test`, {
         method: "GET",
         headers: {
           Accept: "application/json",
