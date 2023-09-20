@@ -1,24 +1,38 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect } from "react";
 import "./App.css";
+
+let config = {
+  apiUrl: "",
+};
+
+async function readConfig() {
+  if (import.meta.env.MODE === "development") {
+    // Use .env file during development
+    config.apiUrl = import.meta.env.VITE_API_URL || "";
+  } else {
+    // Use config.json during production
+    config = await fetch("./config.json").then((response) => response.json());
+  }
+}
 
 function App() {
   const [count, setCount] = useState(0);
 
-  async function callTest() {
-    console.log("hi");
+  useEffect(() => {
+    readConfig().then(() => {
+      console.log("this config.apiUrl", config.apiUrl);
+    });
+  }, []);
 
+  async function callTest() {
     try {
-      const response = await fetch(
-        "https://voxpguzb0g.execute-api.us-west-2.amazonaws.com/prod/test",
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
-        }
-      );
+      const response = await fetch(`${config.apiUrl}/test`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`Error! status: ${response.status}`);
@@ -37,12 +51,8 @@ function App() {
   return (
     <>
       <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        <a href="https://vitejs.dev" target="_blank"></a>
+        <a href="https://react.dev" target="_blank"></a>
       </div>
       <h1>Vite + React</h1>
       <div className="card">
