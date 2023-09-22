@@ -89,7 +89,7 @@ to quickly create a Cobra application.`,
 			Deploy: myProject.Deploy,
 			Redis:  true,
 			CORS:   myProject.CORS,
-			Git:    true,
+			Git:    myProject.Git == "Yes",
 		}
 		project := Project{
 			AppName: myProject.Name,

@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"bytes"
-	"embed"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 )
@@ -31,18 +29,29 @@ func (p *Project) Create() error {
 		}
 	}
 
-	gitPull := exec.Command("git", "clone", "https://github.com/Melkeydev/ragStack.git", ".")
-	gitPull.Dir = appDir
-	var out bytes.Buffer
-	gitPull.Stdout = &out
-	if err := gitPull.Run(); err != nil {
+	if err := p.executeCmd("git", []string{"clone", "--depth", "1", "-b", "main", "https://github.com/Melkeydev/ragStack.git", "."}, appDir); err != nil {
 		return err
 	}
-	fmt.Println(out.String())
 
 	if err := os.RemoveAll(fmt.Sprintf("%s/.git", appDir)); err != nil {
 		return err
 	}
+
+	if p.Options.Git {
+		if err := p.executeCmd("git", []string{"init"}, appDir); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
+func (p *Project) executeCmd(name string, args []string, dir string) error {
+	command := exec.Command(name, args...)
+	command.Dir = dir
+	var out bytes.Buffer
+	command.Stdout = &out
+	if err := command.Run(); err != nil {
+		return err
+	}
+	return nil
+}
