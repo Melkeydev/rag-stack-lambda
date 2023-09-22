@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"embed"
+	"fmt"
 	"io/fs"
 	"os"
-
-	"github.com/spf13/rag-cli/template"
+	"os/exec"
 )
 
 type Options struct {
@@ -23,29 +24,25 @@ type Project struct {
 }
 
 func (p *Project) Create() error {
+	appDir := fmt.Sprintf("%s/%s", p.AbsolutPath, p.AppName)
 	if _, err := os.Stat(p.AbsolutPath); err == nil {
-		if err := os.Mkdir(p.AbsolutPath, 0755); err != nil {
+		if err := os.Mkdir(appDir, 0755); err != nil {
 			return err
 		}
 	}
-	files, err := getAllFilenames(&template.Template)
-	// todo
-	// for now just correctly copy template as is w copy package
+
+	gitPull := exec.Command("git", "clone", "https://github.com/Melkeydev/ragStack.git", ".")
+	gitPull.Dir = appDir
+	var out bytes.Buffer
+	gitPull.Stdout = &out
+	if err := gitPull.Run(); err != nil {
+		return err
+	}
+	fmt.Println(out.String())
+
+	if err := os.RemoveAll(fmt.Sprintf("%s/.git", appDir)); err != nil {
+		return err
+	}
 	return nil
 }
 
-func getAllFilenames(efs *embed.FS) (files []string, err error) {
-	if err := fs.WalkDir(efs, ".", func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			return nil
-		}
-
-		files = append(files, path)
-
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return files, nil
-}

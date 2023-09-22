@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
+	"os"
 	multi "github.com/spf13/rag-cli/cmd/ui/multiSelect"
 	textinput "github.com/spf13/rag-cli/cmd/ui/textInput"
 )
@@ -94,9 +95,15 @@ to quickly create a Cobra application.`,
 			AppName: myProject.Name,
 			Options: &spec,
 		}
+		currentWorkingDir, err := os.Getwd()
+		if err != nil {
+			cobra.CheckErr(err)
+		}
+		project.AbsolutPath = currentWorkingDir
+		fmt.Println(currentWorkingDir)
+
 
 		project.Create()
-
 		fmt.Println(myProject)
 	},
 }
