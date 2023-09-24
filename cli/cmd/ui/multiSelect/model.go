@@ -4,7 +4,7 @@ import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"os"
+	"github.com/spf13/rag-cli/cmd/creator"
 )
 
 var (
@@ -27,18 +27,20 @@ type model struct {
 	selected map[int]struct{}
 	choice   *Selection
 	header   string
+	exit     *creator.ExitProgram
 }
 
 func (m model) Init() tea.Cmd {
 	return nil
 }
 
-func InitialModel(choices []string, selection *Selection, header string) model {
+func InitialModelMulti(choices []string, selection *Selection, header string, exit *creator.ExitProgram) model {
 	return model{
 		choices:  choices,
 		selected: make(map[int]struct{}),
 		choice:   selection,
 		header:   titleStyle.Render(header),
+		exit:     exit,
 	}
 }
 
@@ -47,7 +49,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
-			os.Exit(1)
+			m.exit.Value = true
+			return m, tea.Quit
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -97,14 +100,4 @@ func (m model) View() string {
 	s += fmt.Sprintf("\nPress %s to quit.\n\n", exitColor.Render("q"))
 
 	return s
-}
-
-func MultiBoxSelectRun(options []string, selection *Selection, header string) {
-	p := tea.NewProgram(InitialModel(options, selection, header))
-	if _, err := p.Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
-	}
-	p.ReleaseTerminal()
-	p.RestoreTerminal()
 }

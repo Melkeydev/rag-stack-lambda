@@ -8,10 +8,12 @@ import (
 	"os"
 	"sync"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	multi "github.com/spf13/rag-cli/cmd/ui/multiSelect"
 	"github.com/spf13/rag-cli/cmd/ui/spinner"
+	"github.com/spf13/rag-cli/cmd/creator"
 	textinput "github.com/spf13/rag-cli/cmd/ui/textInput"
 )
 
@@ -22,6 +24,8 @@ type ProjectSchema struct {
 	CORS   string
 	Git    string
 }
+
+
 
 var (
 	logoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#01FAC6")).Bold(true).Padding(1)
@@ -45,17 +49,26 @@ to quickly create a Cobra application.`,
 ██║  ██║██║  ██║╚██████╔╝
 ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ 
 		`
-
+		UserWantsToExit := creator.ExitProgram{Value: false}
 		fmt.Printf("%s\n", logoStyle.Render(logo))
+		var program *tea.Program
 		myProject := ProjectSchema{}
 		projectName := &textinput.Output{}
-		textinput.TextInputRun("myAwesomeApp", "What is your project name?", projectName)
+		program = tea.NewProgram(textinput.InitialModelTextInput("myAwesomeApp", "What is your project name?", projectName, &UserWantsToExit))
+		if _, err := program.Run(); err != nil {
+			cobra.CheckErr(err)
+		}
+		UserWantsToExit.CheckExitStatus(program)
 		myProject.Name = projectName.Output
 
 		selectedGit := &multi.Selection{}
 		gitOptions := []string{"Yes", "No thanks"}
 		gitHeader := fmt.Sprintf("Do you want to initialize git with %s?", myProject.Name)
-		multi.MultiBoxSelectRun(gitOptions, selectedGit, gitHeader)
+		program = tea.NewProgram(multi.InitialModelMulti(gitOptions, selectedGit, gitHeader, &UserWantsToExit))
+		if _, err := program.Run(); err != nil {
+			cobra.CheckErr(err)
+		}
+		UserWantsToExit.CheckExitStatus(program)
 		myProject.Git = selectedGit.Choice
 
 		step := 0
@@ -68,17 +81,29 @@ to quickly create a Cobra application.`,
 			case 0:
 				options = []string{"AWS Lambda", "AWS EC2"}
 				header = fmt.Sprintf("How do you want to deploy %s?", myProject.Name)
-				multi.MultiBoxSelectRun(options, s, header)
+				program = tea.NewProgram(multi.InitialModelMulti(options, s, header, &UserWantsToExit))
+				if _, err := program.Run(); err != nil {
+					cobra.CheckErr(err)
+				}
+				UserWantsToExit.CheckExitStatus(program)
 				myProject.Deploy = s.Choice
 			case 1:
 				options = []string{"Yes", "No thanks"}
 				header = fmt.Sprintf("Do you want to use redis with %s?", myProject.Name)
-				multi.MultiBoxSelectRun(options, s, header)
+				program = tea.NewProgram(multi.InitialModelMulti(options, s, header, &UserWantsToExit))
+				if _, err := program.Run(); err != nil {
+					cobra.CheckErr(err)
+				}
+				UserWantsToExit.CheckExitStatus(program)
 				myProject.Redis = s.Choice
 			case 2:
 				options = []string{"Domain", "Protocol", "Port"}
 				header = fmt.Sprintf("Which CORS policy will %s use?", myProject.Name)
-				multi.MultiBoxSelectRun(options, s, header)
+				program = tea.NewProgram(multi.InitialModelMulti(options, s, header, &UserWantsToExit))
+				if _, err := program.Run(); err != nil {
+					cobra.CheckErr(err)
+				}
+				UserWantsToExit.CheckExitStatus(program)
 				myProject.CORS = s.Choice
 			}
 			step++
@@ -99,17 +124,18 @@ to quickly create a Cobra application.`,
 		}
 		project.AbsolutPath = currentWorkingDir
 
-		var wg sync.WaitGroup
-		wg.Add(1)
+		var initIOWg sync.WaitGroup
+		initIOWg.Add(1)
 		projectLoading := spinner.LoadingState{Loading: true}
-		loadingProgram := spinner.SpineMe("Generating project", &projectLoading, &wg)
+		go project.Create(&initIOWg, &projectLoading)
+		program = tea.NewProgram(spinner.InitModelSpinner("Generating project", &projectLoading, &UserWantsToExit))
+		if _, err := program.Run(); err != nil {
+			cobra.CheckErr(err)
+		}
+		UserWantsToExit.CheckExitStatus(program)
 
-		err = project.Create()
-
-		projectLoading.Loading = false
-		wg.Wait()
-		loadingProgram.ReleaseTerminal()
-		loadingProgram.RestoreTerminal()
+		initIOWg.Wait()
+		program.ReleaseTerminal()
 
 		if err != nil {
 			cobra.CheckErr(err)

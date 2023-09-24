@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sync"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/rag-cli/cmd/ui/spinner"
 )
 
 type Options struct {
@@ -21,30 +25,31 @@ type Project struct {
 	Options     *Options
 }
 
-func (p *Project) Create() error {
+func (p *Project) Create(wg *sync.WaitGroup, loading *spinner.LoadingState) {
 	appDir := fmt.Sprintf("%s/%s", p.AbsolutPath, p.AppName)
 	if _, err := os.Stat(p.AbsolutPath); err == nil {
 		if err := os.Mkdir(appDir, 0755); err != nil {
-			return err
+			cobra.CheckErr(err)
 		}
 	}
 
 	if err := p.executeCmd("git",
 		[]string{"clone", "--depth", "1", "-b", "main", "https://github.com/Melkeydev/ragStack.git", "."},
 		appDir); err != nil {
-		return err
+		cobra.CheckErr(err)
 	}
 
 	if err := os.RemoveAll(fmt.Sprintf("%s/.git", appDir)); err != nil {
-		return err
+		cobra.CheckErr(err)
 	}
 
 	if p.Options.Git {
 		if err := p.executeCmd("git", []string{"init"}, appDir); err != nil {
-			return err
+			cobra.CheckErr(err)
 		}
 	}
-	return nil
+	wg.Done()
+	loading.Loading = false
 }
 
 func (p *Project) executeCmd(name string, args []string, dir string) error {

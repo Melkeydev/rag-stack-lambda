@@ -2,12 +2,11 @@ package spinner
 
 import (
 	"fmt"
-	"os"
-	"sync"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/rag-cli/cmd/creator"
 )
 
 type errMsg error
@@ -25,14 +24,14 @@ type model struct {
 	err          error
 	msg          string
 	LoadingState *LoadingState
-	wg           *sync.WaitGroup
+	exit        *creator.ExitProgram
 }
 
-func initialModel(loaderMsg string, LoadingState *LoadingState, wg *sync.WaitGroup) model {
+func InitModelSpinner(loaderMsg string, LoadingState *LoadingState, exit *creator.ExitProgram) model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#01FAC6"))
-	return model{spinner: s, msg: loaderMsg, LoadingState: LoadingState, wg: wg}
+	return model{spinner: s, msg: loaderMsg, LoadingState: LoadingState, exit: exit}
 }
 
 func (m model) Init() tea.Cmd {
@@ -45,6 +44,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
 			m.LoadingState.Loading = false
+			m.exit.Value = true
 			return m, tea.Quit
 		default:
 			return m, nil
@@ -56,7 +56,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	default:
 		if !m.LoadingState.Loading {
-			m.wg.Done()
 			return m, tea.Quit
 		}
 
@@ -75,15 +74,4 @@ func (m model) View() string {
 		return str + "\n"
 	}
 	return str
-}
-
-func SpineMe(loaderMsg string, LoadingState *LoadingState, wg *sync.WaitGroup) *tea.Program {
-	p := tea.NewProgram(initialModel(loaderMsg, LoadingState, wg))
-	go func() {
-		if _, err := p.Run(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	}()
-	return p
 }

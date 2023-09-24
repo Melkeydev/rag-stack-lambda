@@ -2,17 +2,16 @@ package textinput
 
 import (
 	"fmt"
-	"log"
-	"os"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/rag-cli/cmd/creator"
 )
 
 var (
-	exitColor    = lipgloss.NewStyle().Foreground(lipgloss.Color("#E11D48")).Bold(true)
-	titleStyle   = lipgloss.NewStyle().Background(lipgloss.Color("#01FAC6")).Foreground(lipgloss.Color("#030303")).Bold(true).Padding(0, 1, 0)
+	exitColor  = lipgloss.NewStyle().Foreground(lipgloss.Color("#E11D48")).Bold(true)
+	titleStyle = lipgloss.NewStyle().Background(lipgloss.Color("#01FAC6")).Foreground(lipgloss.Color("#030303")).Bold(true).Padding(0, 1, 0)
 )
 
 type (
@@ -32,9 +31,10 @@ type model struct {
 	err       error
 	header    string
 	output    *Output
+	exit      *creator.ExitProgram
 }
 
-func initialModel(placeholder string, header string, output *Output) model {
+func InitialModelTextInput(placeholder string, header string, output *Output, exit *creator.ExitProgram) model {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
 	ti.Focus()
@@ -45,6 +45,7 @@ func initialModel(placeholder string, header string, output *Output) model {
 		err:       nil,
 		header:    titleStyle.Render(header),
 		output:    output,
+		exit:      exit,
 	}
 }
 
@@ -58,7 +59,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEnter, tea.KeyCtrlC:
+		case tea.KeyEnter:
 			if len(m.textinput.Value()) > 1 {
 				m.output.update(m.textinput.Value())
 
@@ -68,7 +69,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.String() {
 		case "q", "ctrl+c":
-			os.Exit(1)
+			m.exit.Value = true
+			return m, tea.Quit
 		}
 	case errorMsg:
 		m.err = msg
@@ -84,12 +86,4 @@ func (m model) View() string {
 		m.header,
 		m.textinput.View(),
 		fmt.Sprintf("press %s to quit", exitColor.Render("q")))
-}
-
-func TextInputRun(placeholder string, header string, output *Output) {
-	p := tea.NewProgram(initialModel(placeholder, header, output))
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
 }
