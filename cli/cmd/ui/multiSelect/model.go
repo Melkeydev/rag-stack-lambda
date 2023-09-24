@@ -105,4 +105,6 @@ func MultiBoxSelectRun(options []string, selection *Selection, header string) {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
+	p.ReleaseTerminal()
+	p.RestoreTerminal()
 }

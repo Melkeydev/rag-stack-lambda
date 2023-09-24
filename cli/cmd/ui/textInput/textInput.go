@@ -68,8 +68,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.String() {
 		case "q", "ctrl+c":
-			tea.Quit()
-			os.Exit(0)
+			os.Exit(1)
 		}
 	case errorMsg:
 		m.err = msg
@@ -91,5 +90,6 @@ func TextInputRun(placeholder string, header string, output *Output) {
 	p := tea.NewProgram(initialModel(placeholder, header, output))
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
+		os.Exit(1)
 	}
 }

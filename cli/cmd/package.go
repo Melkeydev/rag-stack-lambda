@@ -29,7 +29,9 @@ func (p *Project) Create() error {
 		}
 	}
 
-	if err := p.executeCmd("git", []string{"clone", "--depth", "1", "-b", "main", "https://github.com/Melkeydev/ragStack.git", "."}, appDir); err != nil {
+	if err := p.executeCmd("git",
+		[]string{"clone", "--depth", "1", "-b", "main", "https://github.com/Melkeydev/ragStack.git", "."},
+		appDir); err != nil {
 		return err
 	}
 

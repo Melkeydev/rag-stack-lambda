@@ -5,10 +5,13 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"sync"
+
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
-	"os"
 	multi "github.com/spf13/rag-cli/cmd/ui/multiSelect"
+	"github.com/spf13/rag-cli/cmd/ui/spinner"
 	textinput "github.com/spf13/rag-cli/cmd/ui/textInput"
 )
 
@@ -24,7 +27,6 @@ var (
 	logoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#01FAC6")).Bold(true).Padding(1)
 )
 
-// initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "A brief description of your command",
@@ -35,11 +37,6 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		//workDir, err := os.Getwd()
-		//if err != nil {
-		//	return
-		//}
-		//fmt.Println(workDir)
 		logo := `
 ██████╗  █████╗  ██████╗ 
 ██╔══██╗██╔══██╗██╔════╝ 
@@ -48,6 +45,7 @@ to quickly create a Cobra application.`,
 ██║  ██║██║  ██║╚██████╔╝
 ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ 
 		`
+
 		fmt.Printf("%s\n", logoStyle.Render(logo))
 		myProject := ProjectSchema{}
 		projectName := &textinput.Output{}
@@ -100,11 +98,23 @@ to quickly create a Cobra application.`,
 			cobra.CheckErr(err)
 		}
 		project.AbsolutPath = currentWorkingDir
-		fmt.Println(currentWorkingDir)
 
+		var wg sync.WaitGroup
+		wg.Add(1)
+		projectLoading := spinner.LoadingState{Loading: true}
+		loadingProgram := spinner.SpineMe("Generating project", &projectLoading, &wg)
 
-		project.Create()
-		fmt.Println(myProject)
+		err = project.Create()
+
+		projectLoading.Loading = false
+		wg.Wait()
+		loadingProgram.ReleaseTerminal()
+		loadingProgram.RestoreTerminal()
+
+		if err != nil {
+			cobra.CheckErr(err)
+		}
+		os.Exit(0)
 	},
 }
 
