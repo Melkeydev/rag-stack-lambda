@@ -13,8 +13,8 @@ import (
 
 type Options struct {
 	Deploy  string
-	Git     bool
-	Redis   bool
+	Git     string
+	Redis   string
 	CORS    string
 	AppName string
 }
@@ -43,7 +43,7 @@ func (p *Project) Create(wg *sync.WaitGroup, loading *spinner.LoadingState) {
 		cobra.CheckErr(err)
 	}
 
-	if p.Options.Git {
+	if p.Options.Git == "Yes" {
 		if err := p.executeCmd("git", []string{"init"}, appDir); err != nil {
 			cobra.CheckErr(err)
 		}

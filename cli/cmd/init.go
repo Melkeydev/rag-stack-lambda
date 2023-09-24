@@ -11,9 +11,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
+	"github.com/spf13/rag-cli/cmd/creator"
 	multi "github.com/spf13/rag-cli/cmd/ui/multiSelect"
 	"github.com/spf13/rag-cli/cmd/ui/spinner"
-	"github.com/spf13/rag-cli/cmd/creator"
 	textinput "github.com/spf13/rag-cli/cmd/ui/textInput"
 )
 
@@ -24,8 +24,6 @@ type ProjectSchema struct {
 	CORS   string
 	Git    string
 }
-
-
 
 var (
 	logoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#01FAC6")).Bold(true).Padding(1)
@@ -54,74 +52,40 @@ to quickly create a Cobra application.`,
 		var program *tea.Program
 		myProject := ProjectSchema{}
 		projectName := &textinput.Output{}
+
 		program = tea.NewProgram(textinput.InitialModelTextInput("myAwesomeApp", "What is your project name?", projectName, &UserWantsToExit))
 		if _, err := program.Run(); err != nil {
 			cobra.CheckErr(err)
 		}
+
 		UserWantsToExit.CheckExitStatus(program)
 		myProject.Name = projectName.Output
 
-		selectedGit := &multi.Selection{}
-		gitOptions := []string{"Yes", "No thanks"}
-		gitHeader := fmt.Sprintf("Do you want to initialize git with %s?", myProject.Name)
-		program = tea.NewProgram(multi.InitialModelMulti(gitOptions, selectedGit, gitHeader, &UserWantsToExit))
-		if _, err := program.Run(); err != nil {
-			cobra.CheckErr(err)
-		}
-		UserWantsToExit.CheckExitStatus(program)
-		myProject.Git = selectedGit.Choice
+		spec := Options{}
+		Steps := initSteps(&spec)
 
-		step := 0
-		for step <= 2 {
-
+		for _, step := range Steps.Steps {
 			s := &multi.Selection{}
-			var options []string
-			var header string
-			switch step {
-			case 0:
-				options = []string{"AWS Lambda", "AWS EC2"}
-				header = fmt.Sprintf("How do you want to deploy %s?", myProject.Name)
-				program = tea.NewProgram(multi.InitialModelMulti(options, s, header, &UserWantsToExit))
-				if _, err := program.Run(); err != nil {
-					cobra.CheckErr(err)
-				}
-				UserWantsToExit.CheckExitStatus(program)
-				myProject.Deploy = s.Choice
-			case 1:
-				options = []string{"Yes", "No thanks"}
-				header = fmt.Sprintf("Do you want to use redis with %s?", myProject.Name)
-				program = tea.NewProgram(multi.InitialModelMulti(options, s, header, &UserWantsToExit))
-				if _, err := program.Run(); err != nil {
-					cobra.CheckErr(err)
-				}
-				UserWantsToExit.CheckExitStatus(program)
-				myProject.Redis = s.Choice
-			case 2:
-				options = []string{"Domain", "Protocol", "Port"}
-				header = fmt.Sprintf("Which CORS policy will %s use?", myProject.Name)
-				program = tea.NewProgram(multi.InitialModelMulti(options, s, header, &UserWantsToExit))
-				if _, err := program.Run(); err != nil {
-					cobra.CheckErr(err)
-				}
-				UserWantsToExit.CheckExitStatus(program)
-				myProject.CORS = s.Choice
+			program = tea.NewProgram(multi.InitialModelMulti(step.Options, s, step.Headers, &UserWantsToExit))
+			if _, err := program.Run(); err != nil {
+				cobra.CheckErr(err)
 			}
-			step++
+
+			UserWantsToExit.CheckExitStatus(program)
+
+			*step.Field = s.Choice
 		}
-		spec := Options{
-			Deploy: myProject.Deploy,
-			Redis:  true,
-			CORS:   myProject.CORS,
-			Git:    myProject.Git == "Yes",
-		}
+
 		project := Project{
 			AppName: myProject.Name,
 			Options: &spec,
 		}
+
 		currentWorkingDir, err := os.Getwd()
 		if err != nil {
 			cobra.CheckErr(err)
 		}
+
 		project.AbsolutPath = currentWorkingDir
 
 		var initIOWg sync.WaitGroup
@@ -132,6 +96,7 @@ to quickly create a Cobra application.`,
 		if _, err := program.Run(); err != nil {
 			cobra.CheckErr(err)
 		}
+
 		UserWantsToExit.CheckExitStatus(program)
 
 		initIOWg.Wait()
@@ -140,6 +105,7 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			cobra.CheckErr(err)
 		}
+
 		os.Exit(0)
 	},
 }
