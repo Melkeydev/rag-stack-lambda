@@ -9,7 +9,7 @@ export class RagStackFargate extends Stack {
     super(scope, id, props);
 
     const backend = new Backend(this, "Backend");
-    const frontend = new Frontend(this, "Frontend", { apiUrl: backend.apiUrl });
+    const frontend = new Frontend(this, "Frontend", { apiUrl: "devhouse.dev" });
 
     new CfnOutput(this, "DistributionUrl", { value: frontend.distributionUrl });
   }

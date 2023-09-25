@@ -5,6 +5,13 @@ import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
+import { HostedZone, ARecord, RecordTarget } from "aws-cdk-lib/aws-route53";
+import {
+  Certificate,
+  CertificateValidation,
+} from "aws-cdk-lib/aws-certificatemanager";
+import { ApplicationProtocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
 
 export class Backend extends Construct {
   public apiUrl: string;
@@ -19,8 +26,21 @@ export class Backend extends Construct {
     });
 
     const vpc = new ec2.Vpc(this, "RagFargateVPC", {
-      // I think 2 is cheapr but i literally made that up
       maxAzs: 2,
+    });
+
+    const publicZone = HostedZone.fromHostedZoneAttributes(
+      this,
+      "HttpsFargateAlbPublicZone",
+      {
+        zoneName: "devhouse.dev",
+        hostedZoneId: "Z00960303IO6O2SU42RW5",
+      }
+    );
+
+    const certificate = new Certificate(this, "HttpsFargateAlbCertificate", {
+      domainName: "devhouse.dev",
+      validation: CertificateValidation.fromDns(publicZone),
     });
 
     const cluster = new ecs.Cluster(this, "RagFargateCluster", {
@@ -43,10 +63,21 @@ export class Backend extends Construct {
               TABLE_NAME: table.tableName,
             },
           },
+          certificate: certificate,
+          protocol: ApplicationProtocol.HTTPS,
+          redirectHTTP: true,
           memoryLimitMiB: 512,
           publicLoadBalancer: true,
         }
       );
+
+    new ARecord(this, "HttpsFargateAlbARecord", {
+      zone: publicZone,
+      recordName: "devhouse.dev",
+      target: RecordTarget.fromAlias(
+        new LoadBalancerTarget(fargateService.loadBalancer)
+      ),
+    });
 
     // Grant ECS instance function
     table.grantReadWriteData(fargateService.taskDefinition.taskRole);
