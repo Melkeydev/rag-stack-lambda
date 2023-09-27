@@ -12,7 +12,9 @@ async function readConfig() {
     config.apiUrl = import.meta.env.VITE_API_URL || "";
   } else {
     // Use config.json during production
-    config = await fetch("./config.json").then((response) => response.json());
+    config.apiUrl = await fetch("./config.json")
+      .then((response) => response.json())
+      .then((json) => json.apiUrl);
   }
 }
 
@@ -27,7 +29,7 @@ function App() {
 
   async function callTest() {
     try {
-      const response = await fetch(`${config.apiUrl}/test`, {
+      const response = await fetch(`https://${config.apiUrl}/test`, {
         method: "GET",
         headers: {
           Accept: "application/json",
