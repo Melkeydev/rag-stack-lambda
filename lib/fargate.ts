@@ -13,9 +13,16 @@ import {
 import { ApplicationProtocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
 
+export interface FargateProps extends StackProps {
+  domainName: string;
+  hostedZoneName: string;
+  hostedZoneId: string;
+  aRecordName: string;
+}
+
 export class Backend extends Construct {
   public apiUrl: string;
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: FargateProps) {
     super(scope, id);
 
     // Define the DynamoDB table
@@ -33,13 +40,13 @@ export class Backend extends Construct {
       this,
       "HttpsFargateAlbPublicZone",
       {
-        zoneName: "devhouse.dev",
-        hostedZoneId: "Z00960303IO6O2SU42RW5",
+        zoneName: props.hostedZoneName,
+        hostedZoneId: props.hostedZoneId,
       }
     );
 
     const certificate = new Certificate(this, "HttpsFargateAlbCertificate", {
-      domainName: "devhouse.dev",
+      domainName: props.domainName,
       validation: CertificateValidation.fromDns(publicZone),
     });
 
@@ -73,7 +80,7 @@ export class Backend extends Construct {
 
     new ARecord(this, "HttpsFargateAlbARecord", {
       zone: publicZone,
-      recordName: "devhouse.dev",
+      recordName: props.aRecordName,
       target: RecordTarget.fromAlias(
         new LoadBalancerTarget(fargateService.loadBalancer)
       ),
@@ -81,7 +88,6 @@ export class Backend extends Construct {
 
     // Grant ECS instance function
     table.grantReadWriteData(fargateService.taskDefinition.taskRole);
-
-    this.apiUrl = fargateService.loadBalancer.loadBalancerDnsName;
+    this.apiUrl = props.aRecordName;
   }
 }
