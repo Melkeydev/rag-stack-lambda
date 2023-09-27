@@ -25,6 +25,14 @@ type Project struct {
 	Options     *Options
 }
 
+func gitClone(repoUrl string, appDir string) {
+	if err := executeCmd("git",
+		[]string{"clone", "--depth", "1", "-b", "main", repoUrl, "."},
+		appDir); err != nil {
+		cobra.CheckErr(err)
+	}
+}
+
 func (p *Project) Create(wg *sync.WaitGroup, loading *spinner.LoadingState) {
 	appDir := fmt.Sprintf("%s/%s", p.AbsolutPath, p.AppName)
 	if _, err := os.Stat(p.AbsolutPath); err == nil {
@@ -32,11 +40,14 @@ func (p *Project) Create(wg *sync.WaitGroup, loading *spinner.LoadingState) {
 			cobra.CheckErr(err)
 		}
 	}
-
-	if err := p.executeCmd("git",
-		[]string{"clone", "--depth", "1", "-b", "main", "https://github.com/Melkeydev/ragStack.git", "."},
-		appDir); err != nil {
-		cobra.CheckErr(err)
+	
+	switch p.Options.Deploy {
+	case "AWS Lambda":
+			gitClone("https://github.com/Melkeydev/rag-stack-lambda.git", appDir)
+	case "AWS EC2":
+		gitClone("https://github.com/Melkeydev/rag-stack-fargate.git", appDir)
+	default:
+		cobra.CheckErr("No deploy option selected")
 	}
 
 	if err := os.RemoveAll(fmt.Sprintf("%s/.git", appDir)); err != nil {
@@ -44,7 +55,7 @@ func (p *Project) Create(wg *sync.WaitGroup, loading *spinner.LoadingState) {
 	}
 
 	if p.Options.Git == "Yes" {
-		if err := p.executeCmd("git", []string{"init"}, appDir); err != nil {
+		if err := executeCmd("git", []string{"init"}, appDir); err != nil {
 			cobra.CheckErr(err)
 		}
 	}
@@ -52,7 +63,7 @@ func (p *Project) Create(wg *sync.WaitGroup, loading *spinner.LoadingState) {
 	loading.Loading = false
 }
 
-func (p *Project) executeCmd(name string, args []string, dir string) error {
+func executeCmd(name string, args []string, dir string) error {
 	command := exec.Command(name, args...)
 	command.Dir = dir
 	var out bytes.Buffer
