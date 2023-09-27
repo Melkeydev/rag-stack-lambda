@@ -5,23 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	ragCrypto "melkeydev/ragStackCDK/clients/crypto"
 	"net/http"
 	"strings"
 	"time"
 
-	ragCrypto "melkeydev/ragStackCDK/clients/crypto"
-	ragDynamo "melkeydev/ragStackCDK/clients/dynamo"
-	ragJWT "melkeydev/ragStackCDK/clients/jwt"
-
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-
-	_ "github.com/lib/pq"
 )
-
-type MyEvent struct {
-	Name string `json:"name"`
-}
 
 type RegisterRequest struct {
 	Username string `json:"username"`
@@ -31,23 +21,6 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-}
-
-const (
-	userTableName = "user-table-name"
-)
-
-type App struct {
-	db  ragDynamo.UserStorageDB
-	jwt ragJWT.TokenValidator
-}
-
-// TODO: is this even the best approach?
-func NewApp(db ragDynamo.UserStorageDB, jwt ragJWT.TokenValidator) *App {
-	return &App{
-		db:  ragDynamo.NewDynamoDBClient(),
-		jwt: ragJWT.NewJWTClient(db),
-	}
 }
 
 func (app *App) RegisterHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -267,29 +240,4 @@ func (app *App) TestHandler(request events.APIGatewayProxyRequest) (events.APIGa
 
 	return response, nil
 
-}
-
-func main() {
-	// Test out the RDS client
-	db := ragDynamo.NewDynamoDBClient()
-	jwt := ragJWT.NewJWTClient(db)
-
-	app := NewApp(db, jwt)
-
-	lambda.Start(func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-		switch request.Path {
-		case "/login":
-			return app.LoginHandler(request)
-		case "/register":
-			return app.RegisterHandler(request)
-		case "/refresh":
-			return app.RefreshHandler(request)
-		case "/test":
-			return app.TestHandler(request)
-		case "/protected":
-			return ragJWT.ValidateJWTMiddleware(app.ProtectedHandler)(request)
-		default:
-			return events.APIGatewayProxyResponse{Body: "Not Found", StatusCode: http.StatusNotFound}, nil
-		}
-	})
 }

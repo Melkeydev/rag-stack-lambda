@@ -29,7 +29,9 @@ function App() {
 
   async function callTest() {
     try {
-      const response = await fetch(`https://${config.apiUrl}/test`, {
+      const response = await fetch(`${config.apiUrl}test`, {
+        // this is for fargate
+        // const response = await fetch(`https://${config.apiUrl}/test`, {
         method: "GET",
         headers: {
           Accept: "application/json",
