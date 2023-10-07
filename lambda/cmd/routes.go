@@ -73,9 +73,15 @@ func (app *App) RegisterHandler(request events.APIGatewayProxyRequest) (events.A
 	}
 
 	response := events.APIGatewayProxyResponse{
-		Body:              fmt.Sprintf(`{"access_token": "%s"}`, accessToken),
-		StatusCode:        http.StatusOK,
-		Headers:           map[string]string{"Content-Type": "application/json"},
+		Body:       fmt.Sprintf(`{"access_token": "%s"}`, accessToken),
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                     "application/json",
+			"Access-Control-Allow-Origin":      "*",
+			"Access-Control-Allow-Headers":     "Content-Type",
+			"Access-Control-Allow-Methods":     "OPTIONS, POST, GET",
+			"Access-Control-Allow-Credentials": "true",
+		},
 		MultiValueHeaders: map[string][]string{"Set-Cookie": {refreshCookie.String()}},
 	}
 
@@ -135,9 +141,15 @@ func (app *App) LoginHandler(request events.APIGatewayProxyRequest) (events.APIG
 	}
 
 	response := events.APIGatewayProxyResponse{
-		Body:              fmt.Sprintf(`{"access_token": "%s"}`, accessToken),
-		StatusCode:        http.StatusOK,
-		Headers:           map[string]string{"Content-Type": "application/json"},
+		Body:       fmt.Sprintf(`{"access_token": "%s"}`, accessToken),
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                     "application/json",
+			"Access-Control-Allow-Origin":      "*",
+			"Access-Control-Allow-Headers":     "Content-Type",
+			"Access-Control-Allow-Methods":     "OPTIONS, POST, GET",
+			"Access-Control-Allow-Credentials": "true",
+		},
 		MultiValueHeaders: map[string][]string{"Set-Cookie": {refreshCookie.String()}},
 	}
 
@@ -202,9 +214,15 @@ func (app *App) RefreshHandler(request events.APIGatewayProxyRequest) (events.AP
 
 	// Create a response with the new access token and set the refresh cookie
 	response := events.APIGatewayProxyResponse{
-		Body:              fmt.Sprintf(`{"access_token": "%s"}`, accessToken),
-		StatusCode:        http.StatusOK,
-		Headers:           map[string]string{"Content-Type": "application/json"},
+		Body:       fmt.Sprintf(`{"access_token": "%s"}`, accessToken),
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type":                     "application/json",
+			"Access-Control-Allow-Origin":      "*",
+			"Access-Control-Allow-Headers":     "Content-Type",
+			"Access-Control-Allow-Methods":     "OPTIONS, POST, GET",
+			"Access-Control-Allow-Credentials": "true",
+		},
 		MultiValueHeaders: map[string][]string{"Set-Cookie": {refreshCookie.String()}},
 	}
 
