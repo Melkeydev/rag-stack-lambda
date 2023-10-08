@@ -1,73 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
-
-let config = {
-  apiUrl: "",
-};
-
-async function readConfig() {
-  if (import.meta.env.MODE === "development") {
-    // Use .env file during development
-    config.apiUrl = import.meta.env.VITE_API_URL || "";
-  } else {
-    // Use config.json during production
-    config.apiUrl = await fetch("./config.json")
-      .then((response) => response.json())
-      .then((json) => json.apiUrl);
-  }
-}
+import { Register } from "./pages/Register";
+import { HomePage } from "./pages/HomePage";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 function App() {
-  const [count, setCount] = useState(0);
+  const [apiUrl, setApiUrl] = useState("");
+
+  const readConfig = async () => {
+    let url = "";
+    if (import.meta.env.MODE === "development") {
+      // Use .env file during development
+      url = import.meta.env.VITE_API_URL || "";
+    } else {
+      // Use config.json during production
+      url = await fetch("./config.json")
+        .then((response) => response.json())
+        .then((json) => json.apiUrl);
+    }
+    setApiUrl(url);
+  };
 
   useEffect(() => {
     // Read the config
     readConfig();
   }, []);
 
-  async function callTest() {
-    try {
-      const response = await fetch(`${config.apiUrl}test`, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      console.log("result is: ", JSON.stringify(result, null, 4));
-    } catch (err: any) {
-      if (err.message) {
-        console.log(err.message);
-      }
-    }
-  }
-
   return (
     <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank"></a>
-        <a href="https://react.dev" target="_blank"></a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <button onClick={() => callTest()}>Touch me</button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<HomePage apiUrl={apiUrl} />} />
+          <Route path="/register" element={<Register apiUrl={apiUrl} />} />
+        </Routes>
+      </BrowserRouter>
     </>
   );
 }
