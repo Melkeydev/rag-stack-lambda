@@ -20,8 +20,6 @@ export const Register = ({ apiUrl }: RegisterPageProps) => {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Email: ", formData.username);
-    console.log("Password: ", formData.password);
     registerUser(formData);
   };
 
@@ -42,14 +40,17 @@ export const Register = ({ apiUrl }: RegisterPageProps) => {
         throw new Error(`Error! status: ${response.status}`);
       } else {
         console.log("user registered");
+        const result = await response.json();
+
+        localStorage.setItem("access_token", result.access_token);
+        alert("Registration successful! The access_token is in localStorage!");
+
+        console.log("result is: ", JSON.stringify(result, null, 4));
       }
-
-      const result = await response.json();
-
-      console.log("result is: ", JSON.stringify(result, null, 4));
     } catch (err: any) {
       if (err.message) {
         console.log(err.message);
+        alert("Registration failed! Look at the console for the error message");
       }
     }
   };
@@ -112,7 +113,7 @@ export const Register = ({ apiUrl }: RegisterPageProps) => {
             <div>
               <button
                 type="submit"
-                className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                className="flex w-full justify-center rounded-md bg-indigo-300 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
               >
                 Sign in
               </button>

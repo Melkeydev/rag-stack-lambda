@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface HomePageProps {
   apiUrl: string;
 }
 
 export const HomePage = ({ apiUrl }: HomePageProps) => {
-  const [count, setCount] = useState(0);
+  let navigate = useNavigate();
 
   async function callTest() {
     try {
@@ -30,15 +30,19 @@ export const HomePage = ({ apiUrl }: HomePageProps) => {
     }
   }
 
+  const navigateToRegister = () => {
+    navigate("/register");
+  };
+
   return (
     <>
       <h1>Vite + React + Tailwind</h1>
       <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
         <button className="bg-red-500" onClick={() => callTest()}>
-          Test AWS
+          Test AWS Call
+        </button>
+        <button className="bg-indigo-300" onClick={navigateToRegister}>
+          Test Register User
         </button>
       </div>
     </>
