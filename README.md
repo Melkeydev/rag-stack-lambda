@@ -134,4 +134,4 @@ Pop in and say hi! ♡
 
 ## License
 
-Licensed under [MIT License](https://github.com/Melkeydev/rag-stack-lambda/LICENSE)
+Licensed under [./MIT License]
