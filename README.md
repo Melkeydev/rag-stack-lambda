@@ -134,4 +134,4 @@ Pop in and say hi! ♡
 
 ## License
 
-Licensed under [./MIT License]
+Licensed under [MIT License](./LICENSE)
