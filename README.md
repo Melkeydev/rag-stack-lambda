@@ -131,3 +131,7 @@ Join the [Discord server](discord.gg/melkeydevhouse)! We're always around to hel
 You can also probably catch Melkey working live on [Twitch](twitch.tv/melkey)! 
 
 Pop in and say hi! ♡
+
+## License
+
+Licensed under [MIT License](./LICENSE)
